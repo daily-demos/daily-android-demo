@@ -1,0 +1,16 @@
+<resources>
+    <string name="app_name">DailyDemo</string>
+    <string name="call_button">Join</string>
+    <string name="hangup_button">Leave</string>
+    <string name="tap_to_enter_room_url">tap to enter room url</string>
+    <string name="inputs">Inputs</string>
+    <string name="publish">Publishing</string>
+    <string name="publish_camera">Publish Camera</string>
+    <string name="publish_mic">Publish Mic</string>
+    <string name="input_camera">Input Camera</string>
+    <string name="input_mic">Input Mic</string>
+    <string name="local_camera">Local Camera</string>
+    <string name="no_one_else_in_meeting">No one else is in the meeting</string>
+    <string name="join_meeting_instructions">Enter the room URL and click JOIN!</string>
+    <string name="amount_of_participants_at_meeting">There is %d other participants on this meeting</string>
+</resources>
