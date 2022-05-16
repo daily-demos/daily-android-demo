@@ -120,23 +120,18 @@ class MainActivity : AppCompatActivity() {
         // Render the next particpant in the list if any
         val nextParticipant =
             callClient.participants().all.values.firstOrNull{ !it.info.isLocal && it.media?.camera?.track != null }
-        if(nextParticipant != null){
-            updateRemoteVideoTrack(nextParticipant.media?.camera?.track)
-        } else {
-            clearRemoteVideoView()
-            updateRemoteCameraMaskViewMessage()
-        }
+        updateRemoteVideoTrack(nextParticipant?.media?.camera?.track)
     }
 
     private fun clearRemoteVideoView() {
-        remoteVideoView?.track = null
+        remoteVideoView?.release()
         remoteContainer?.removeView(remoteVideoView)
         remoteVideoView = null
         remoteCameraMaskView.visibility = View.VISIBLE
     }
 
     private fun clearLocalVideoView() {
-        localVideoView?.track = null
+        localVideoView?.release()
         localContainer?.removeView(localVideoView)
         localVideoView = null
         localCameraMaskView.visibility = View.VISIBLE
@@ -172,16 +167,15 @@ class MainActivity : AppCompatActivity() {
 
     private fun updateRemoteVideoTrack(track: MediaStreamTrack? = null) {
         Log.d(TAG, "updateRemoteVideoTrack ${track}")
-        if(track == null){
-            return
-        }
         if (remoteVideoView == null) {
             remoteVideoView = VideoView(this@MainActivity)
             remoteContainer?.addView(remoteVideoView)
-            remoteCameraMaskView.visibility = View.GONE
         }
-        // For now this will render whoever joins causing flickering
         remoteVideoView?.track = track
+        val containsTrack = track != null
+        remoteCameraMaskView.visibility = if(containsTrack) View.GONE else View.VISIBLE
+        remoteVideoView?.visibility = if(containsTrack) View.VISIBLE else View.GONE
+        updateRemoteCameraMaskViewMessage()
     }
 
     override fun onCreate(savedInstance: Bundle?) {
