@@ -14,9 +14,16 @@ import androidx.activity.result.contract.ActivityResultContracts.RequestMultiple
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
-import co.daily.*
-import co.daily.VideoView
+import co.daily.CallClient
+import co.daily.CallClientListener
+import co.daily.exception.UnknownCallClientError
+import co.daily.model.CallState
+import co.daily.model.Participant
+import co.daily.model.ParticipantId
+import co.daily.settings.*
+import co.daily.settings.subscription.*
 import kotlinx.coroutines.launch
+import co.daily.view.VideoView
 
 private const val TAG = "daily_demo_app"
 
@@ -48,11 +55,16 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var localCameraMaskView: TextView
     private lateinit var remoteCameraMaskView: TextView
+    private var displayedRemoteParticipant: Participant? = null
+
+    // The default profiles that we are going to use
+    val <SubscriptionProfile> SubscriptionProfile.activeRemote get() = SubscriptionProfile("activeRemote")
 
     private var callClientListener = object : CallClientListener {
 
-        // This demonstrates that the user can ignore individual events
-        // override fun onError() {}
+        override fun onError(message: String) {
+            Log.d(TAG, "Received error ${message}")
+        }
 
         override fun onCallStateUpdated(
             state: CallState
@@ -60,10 +72,7 @@ class MainActivity : AppCompatActivity() {
             when(state) {
                 CallState.joining -> {}
                 CallState.joined -> {
-                    joinButton.visibility = View.GONE
-                    leaveButton.visibility = View.VISIBLE
-                    leaveButton.isEnabled = true
-                    updateRemoteCameraMaskViewMessage()
+                    onJoinedMeeting()
                 }
                 CallState.leaving -> {}
                 CallState.left -> {
@@ -93,14 +102,63 @@ class MainActivity : AppCompatActivity() {
             updateParticipantVideoView(participant)
         }
 
+        override fun onSubscriptionsUpdated(subscriptions: Map<ParticipantId, SubscriptionSettings>) {
+            Log.d(TAG, "onSubscriptionsUpdated $subscriptions")
+        }
+
+        override fun onSubscriptionProfilesUpdated(subscriptionProfiles: Map<SubscriptionProfile, SubscriptionProfileSettings>) {
+            Log.d(TAG, "onSubscriptionProfilesUpdated $subscriptionProfiles")
+        }
+
         override fun onParticipantUpdated(participant: Participant) {
             Log.d(TAG, "onParticipantUpdated local ${participant.info.isLocal}")
             updateParticipantVideoView(participant)
         }
 
+        override fun onActiveSpeakerChanged(activeSpeaker: Participant?) {
+            Log.d(TAG, "onActiveSpeakerChanged ${activeSpeaker?.info?.userName}")
+            renderPreferredRemoteParticipant()
+        }
+
         override fun onParticipantLeft(participant: Participant) {
             Log.d(TAG, "onParticipantLeft")
-            renderNextParticipantTrack()
+            if(participant.id == displayedRemoteParticipant?.id){
+                displayedRemoteParticipant = null
+                renderPreferredRemoteParticipant()
+            }
+        }
+    }
+
+    private fun onJoinedMeeting() {
+        joinButton.visibility = View.GONE
+        leaveButton.visibility = View.VISIBLE
+        leaveButton.isEnabled = true
+        setupParticipantSubscriptionProfiles()
+        renderPreferredRemoteParticipant()
+    }
+
+    private fun setupParticipantSubscriptionProfiles() {
+        lifecycleScope.launch() {
+            val subscriptionProfilesResult = callClient.updateSubscriptionProfiles(mapOf(
+                SubscriptionProfile.activeRemote to
+                        SubscriptionProfileSettingsUpdate(
+                            camera = VideoSubscriptionSettingsUpdate(
+                                receiveSettings = VideoReceiveSettingsUpdate(
+                                    maxQuality = VideoMaxQualityUpdate.high
+                                )
+                            )
+                        ),
+                // By default, all the participants that join this meeting, will have the video quality to low
+                SubscriptionProfile.base to
+                        SubscriptionProfileSettingsUpdate(
+                            camera = VideoSubscriptionSettingsUpdate(
+                                receiveSettings = VideoReceiveSettingsUpdate(
+                                    maxQuality = VideoMaxQualityUpdate.low
+                                )
+                            )
+                        )
+            ))
+            Log.d(TAG, "subscription profiles result $subscriptionProfilesResult")
         }
     }
 
@@ -115,12 +173,53 @@ class MainActivity : AppCompatActivity() {
         remoteCameraMaskView.text = resources.getText(R.string.join_meeting_instructions)
     }
 
-    private fun renderNextParticipantTrack(){
-        Log.d(TAG, "renderNextParticipantTrack")
+    private fun renderPreferredRemoteParticipant(){
+        Log.d(TAG, "renderPreferredRemoteParticipant")
+
+        val allParticipants = callClient.participants().all.values
+        val participantWhoIsSharingScreen = allParticipants.firstOrNull{ it.media?.screenVideo?.track != null }
+        var activeSpeaker = if (callClient.activeSpeaker()?.info?.isLocal == false) callClient.activeSpeaker() else null
+        Log.d(TAG, "activeSpeaker: ${activeSpeaker?.info?.userName}")
+        // Updating the displayed remote participant with the most recent info, otherwise we can get a state where or cache is different from his current state
+        displayedRemoteParticipant = allParticipants.firstOrNull { it.id == displayedRemoteParticipant?.id }
+
+        /*
+        The preference is:
+            - The participant who is sharing his screen
+            - The active speaker
+            - The last displayed remote participant
+            - Any remote participant who has his video opened
+        */
+        val nextParticipant = participantWhoIsSharingScreen
+            ?: activeSpeaker
+            ?: displayedRemoteParticipant
+            ?: callClient.participants().all.values.firstOrNull{ !it.info.isLocal && it.media?.camera?.track != null }
+
         // Render the next particpant in the list if any
-        val nextParticipant =
-            callClient.participants().all.values.firstOrNull{ !it.info.isLocal && it.media?.camera?.track != null }
-        updateRemoteVideoTrack(nextParticipant?.media?.camera?.track)
+        updateRemoteParticipantVideoView(nextParticipant)
+        if(nextParticipant != null){
+            changePreferredRemoteParticipantSubscription(activeParticipant = nextParticipant)
+        }
+    }
+
+    private fun changePreferredRemoteParticipantSubscription(activeParticipant: Participant) {
+        lifecycleScope.launch() {
+            val subscriptionsResult = callClient.updateSubscriptions(
+                // Improve the video quality of the remote participant that is currently displayed
+                forParticipants = mapOf(
+                    activeParticipant.id to SubscriptionSettingsUpdate(
+                        profile = SubscriptionProfile.activeRemote
+                    )
+                ),
+                // Reduce video quality of remote participants not currently displayed
+                forParticipantsWithProfiles = mapOf(
+                    SubscriptionProfile.activeRemote to SubscriptionSettingsUpdate(
+                        profile = SubscriptionProfile.base
+                    )
+                )
+            )
+            Log.d(TAG, "Update subscriptions result $subscriptionsResult")
+        }
     }
 
     private fun clearRemoteVideoView() {
@@ -128,6 +227,7 @@ class MainActivity : AppCompatActivity() {
         remoteContainer?.removeView(remoteVideoView)
         remoteVideoView = null
         remoteCameraMaskView.visibility = View.VISIBLE
+        displayedRemoteParticipant = null
     }
 
     private fun clearLocalVideoView() {
@@ -139,38 +239,48 @@ class MainActivity : AppCompatActivity() {
 
     private fun updateRemoteCameraMaskViewMessage() {
         val message =
-            when (val amountOfParticipants = callClient.participants().all.size) {
-                1 -> resources.getString(R.string.no_one_else_in_meeting)
-                2 -> callClient.participants().all.filter { !it.value.info.isLocal }.entries.first().value.info.userName
-                else -> resources.getString(R.string.amount_of_participants_at_meeting, amountOfParticipants-1)
-            }
+            if (displayedRemoteParticipant != null )
+                displayedRemoteParticipant?.info?.userName?: "Guest"
+            else
+                when (val amountOfParticipants = callClient.participants().all.size) {
+                    1 -> resources.getString(R.string.no_one_else_in_meeting)
+                    2 -> callClient.participants().all.filter { !it.value.info.isLocal }.entries.first().value.info.userName
+                    else -> resources.getString(R.string.amount_of_participants_at_meeting, amountOfParticipants-1)
+                }
         remoteCameraMaskView.text = message
+    }
+
+    private fun updateLocalParticipantVideoView(participant: Participant){
+        // make sure we are only handling local participants
+        if (!participant.info.isLocal) {
+            return
+        }
+
+        if (localVideoView == null) {
+            localVideoView = VideoView(this@MainActivity)
+            localContainer?.addView(localVideoView)
+            localVideoView?.bringVideoToFront()
+        }
+        localVideoView?.track = participant.media?.camera?.track
     }
 
     private fun updateParticipantVideoView(participant: Participant){
         if (participant.info.isLocal) {
-            if (localVideoView == null) {
-                localVideoView = VideoView(this@MainActivity)
-                localContainer?.addView(localVideoView)
-                localVideoView?.bringVideoToFront()
-            }
-            localVideoView?.track = participant.media?.camera?.track
-        }else {
-            if(participant.media?.camera?.track != null){
-                updateRemoteVideoTrack(participant.media?.camera?.track)
-            }else {
-                renderNextParticipantTrack()
-            }
+            updateLocalParticipantVideoView(participant)
+        } else {
+            renderPreferredRemoteParticipant()
         }
-        Log.d(TAG, "track updated ${participant.media?.camera?.track?.nativeTrack}")
     }
 
-    private fun updateRemoteVideoTrack(track: MediaStreamTrack? = null) {
-        Log.d(TAG, "updateRemoteVideoTrack ${track}")
+    private fun updateRemoteParticipantVideoView(participant: Participant? = null) {
+        //here we must invoke to adjust the resolution
+        displayedRemoteParticipant = participant
+        val track = participant?.media?.screenVideo?.track ?: participant?.media?.camera?.track
         if (remoteVideoView == null) {
             remoteVideoView = VideoView(this@MainActivity)
             remoteContainer?.addView(remoteVideoView)
         }
+        remoteVideoView?.videoScaleMode = if (participant?.media?.screenVideo?.track != null) VideoView.VideoScaleMode.FIT else VideoView.VideoScaleMode.FILL
         remoteVideoView?.track = track
         val containsTrack = track != null
         remoteCameraMaskView.visibility = if(containsTrack) View.GONE else View.VISIBLE
@@ -273,13 +383,13 @@ class MainActivity : AppCompatActivity() {
                 sendSettings = VideoSendSettingsUpdate(
                     encodings = VideoEncodingsSettingsUpdate(
                         settings = mapOf(
-                            VideoSendSettingsMaxQualityUpdate.low to
+                            VideoMaxQualityUpdate.low to
                                     VideoEncodingSettingsUpdate(
                                         maxBitrate = BitRate(80000),
                                         maxFramerate = FrameRate(10),
                                         scaleResolutionDownBy = Scale(4F)
                                     ),
-                            VideoSendSettingsMaxQualityUpdate.medium to
+                            VideoMaxQualityUpdate.medium to
                                     VideoEncodingSettingsUpdate(
                                         maxBitrate = BitRate(680000),
                                         maxFramerate = FrameRate(30),
@@ -287,11 +397,7 @@ class MainActivity : AppCompatActivity() {
                                     )
                         )
                     )
-                ),
-                enableInputOnPublish = Enable()
-            ),
-            microphone = MicrophonePublishingSettingsUpdate(
-                enableInputOnPublish = Enable()
+                )
             )
         )
         return ClientSettingsUpdate(
@@ -341,7 +447,7 @@ class MainActivity : AppCompatActivity() {
                     Log.d(TAG, "call state ${callClient.callState()}")
                 } catch (e: UnknownCallClientError) {
                     Log.d(TAG, "Failed to join call")
-                    callClient?.leave()
+                    callClient.leave()
                     showMessage("Failed to join call")
                 }
             }
@@ -370,7 +476,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun initCallClient() {
-        callClient = CallClient(applicationContext).apply {
+        callClient = CallClient(applicationContext, this.lifecycle).apply {
             addListener(callClientListener)
         }
         toggleMicInput(true)
@@ -379,7 +485,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        callClient.onDestroy()
+        Log.d(TAG,"MainActivity on destroy has been invoked!")
     }
 
     private fun checkPermissions() {
