@@ -35,7 +35,7 @@
             android:id="@+id/local_camera_mask_view"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:background="@color/colorDisabled"
+            android:background="@color/colorLocalCameraDisabled"
             android:gravity="center|center_vertical"
             android:text="@string/local_camera"
             android:visibility="visible" />
