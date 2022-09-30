@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <item
+        android:state_checked="true"
+        android:state_pressed="false"
+        android:color="@color/colorToggleChecked" />
+
+    <item
+        android:state_checked="true"
+        android:state_pressed="true"
+        android:color="@color/colorToggleCheckedPressed" />
+
+    <item
+        android:state_checked="false"
+        android:state_pressed="false"
+        android:color="@color/colorToggleUnchecked" />
+
+    <item
+        android:state_checked="false"
+        android:state_pressed="true"
+        android:color="@color/colorToggleUncheckedPressed" />
+
+</selector>

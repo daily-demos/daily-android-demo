@@ -1,10 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="colorPrimary">#ffffff</color>
-    <color name="colorPrimaryDark">#525255</color>
-    <color name="colorAccent">#007cff</color>
-    <color name="colorEnabled">#007cff</color>
-    <color name="colorDisabled">#ff0000</color>
+    <color name="mainBackground">#ffffff</color>
+    <color name="videoBackground">#444444</color>
     <color name="colorToast">#f5f5f5</color>
     <color name="colorLocalCameraDisabled">#C0C0C3</color>
+
+    <color name="colorToolbarButton">#fff</color>
+
+    <color name="colorToggleChecked">#007cff</color>
+    <color name="colorToggleCheckedPressed">#6cb3ff</color>
+    <color name="colorToggleUnchecked">#ff0000</color>
+    <color name="colorToggleUncheckedPressed">#FF6161</color>
 </resources>
