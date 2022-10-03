@@ -1,5 +1,6 @@
 <resources>
     <string name="app_name">DailyDemo</string>
+    <string name="active_call_buttons">Call</string>
     <string name="call_button">Join</string>
     <string name="hangup_button">Leave</string>
     <string name="tap_to_enter_room_url">tap to enter room url</string>
@@ -10,7 +11,17 @@
     <string name="input_camera">Input Camera</string>
     <string name="input_mic">Input Mic</string>
     <string name="local_camera">Local Camera</string>
+    <string name="audio_route">Audio</string>
     <string name="no_one_else_in_meeting">No one else is in the meeting</string>
     <string name="join_meeting_instructions">Enter the room URL and click JOIN!</string>
     <string name="amount_of_participants_at_meeting">There is %d other participants on this meeting</string>
+
+    <string name="more_options">More Options</string>
+    <string name="call_option_change_remote_video">Remote video…</string>
+    <string name="call_option_change_remote_video_title">Remote video</string>
+    <string name="me">Me</string>
+    <string name="username_with_camera">%s (camera)</string>
+    <string name="username_with_screen_share">%s (screen)</string>
+    <string name="remote_video_hide">Hide</string>
+    <string name="remote_video_active_speaker">Active Speaker</string>
 </resources>
