@@ -1,0 +1,31 @@
+name: Build
+
+on:
+    push:
+    pull_request:
+    schedule:
+        -   cron: '00 2 * * 1'
+
+jobs:
+    build:
+        runs-on: ubuntu-latest
+        steps:
+            -   uses: actions/checkout@v2
+
+            -   name: Get Gradle wrapper
+                working-directory: DailyDemo
+                run: gradle wrapper
+
+            -   name: Release build
+                working-directory: DailyDemo
+                run: ./gradlew assembleRelease
+
+            -   name: Debug build
+                working-directory: DailyDemo
+                run: ./gradlew assembleDebug
+
+            -   name: Upload built APK
+                uses: actions/upload-artifact@v2
+                with:
+                    name: demo-debug.apk
+                    path: DailyDemo/app/build/outputs/apk/debug/app-debug.apk
