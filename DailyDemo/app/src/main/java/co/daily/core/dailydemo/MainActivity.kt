@@ -828,7 +828,7 @@ class MainActivity : AppCompatActivity() {
         audioDevicesSpinner.adapter = adapter
         audioDevicesSpinner.onItemSelectedListener = object :
             AdapterView.OnItemSelectedListener {
-            override fun onItemSelected(parent: AdapterView<*>, view: View, position: Int, id: Long) {
+            override fun onItemSelected(parent: AdapterView<*>, view: View?, position: Int, id: Long) {
                 val mediaDevice = audioDevices[position]
                 lifecycleScope.launch() {
                     callClient.setAudioDevice(mediaDevice.deviceId)
