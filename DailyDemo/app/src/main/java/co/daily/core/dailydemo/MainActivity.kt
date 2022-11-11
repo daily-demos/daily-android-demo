@@ -747,13 +747,13 @@ class MainActivity : AppCompatActivity() {
                         settings = mapOf(
                             VideoMaxQualityUpdate.low to
                                 VideoEncodingSettingsUpdate(
-                                    maxBitrate = BitRate(80000),
+                                    maxBitrate = BitRate(80 * 1000),
                                     maxFramerate = FrameRate(10),
                                     scaleResolutionDownBy = Scale(4F)
                                 ),
                             VideoMaxQualityUpdate.medium to
                                 VideoEncodingSettingsUpdate(
-                                    maxBitrate = BitRate(680000),
+                                    maxBitrate = BitRate(520 * 1000),
                                     maxFramerate = FrameRate(30),
                                     scaleResolutionDownBy = Scale(1F)
                                 )
@@ -834,6 +834,7 @@ class MainActivity : AppCompatActivity() {
                     camera = Enable()
                 )
             )
+
             refreshInputPublishButtonsState()
         }
 
