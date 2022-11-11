@@ -352,13 +352,6 @@
             app:layout_constraintEnd_toStartOf="@id/local_video_hspace"
             app:layout_constraintBottom_toTopOf="@id/local_video_vspace">
 
-            <co.daily.view.VideoView
-                android:id="@+id/local_video_view"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                app:daily_bring_to_front="true"
-                app:daily_scale_mode="fill"/>
-
             <TextView
                 android:id="@+id/local_camera_mask_view"
                 android:layout_width="match_parent"

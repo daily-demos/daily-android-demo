@@ -85,9 +85,9 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var addurl: EditText
     private lateinit var callClient: CallClient
-    private var localContainer: FrameLayout? = null
+    private lateinit var localContainer: FrameLayout
     private var remoteContainer: FrameLayout? = null
-    private lateinit var localVideoView: VideoView
+    private var localVideoView: VideoView? = null
     private lateinit var remoteVideoView: VideoView
 
     private lateinit var urlBar: View
@@ -113,6 +113,7 @@ class MainActivity : AppCompatActivity() {
     private var displayedRemoteParticipant: Participant? = null
 
     private var remoteVideoChoice: RemoteVideoChoice = RemoteVideoChoice.Auto
+    private var localParticipant: Participant? = null
 
     private var buttonHidingEnabled = false
     private val buttonHidingRunnable: Runnable = Runnable {
@@ -159,10 +160,7 @@ class MainActivity : AppCompatActivity() {
         override fun onInputsUpdated(inputSettings: InputSettings) {
             Log.d(TAG, "onInputsUpdated: $inputSettings")
             refreshInputPublishButtonsState()
-
-            val cameraEnabled = callClient.inputs().camera.isEnabled
-            localCameraMaskView.visibility = if (cameraEnabled) View.GONE else View.VISIBLE
-            localVideoView.visibility = if (cameraEnabled) View.VISIBLE else View.GONE
+            updateLocalVideoState()
         }
 
         override fun onPublishingUpdated(publishingSettings: PublishingSettings) {
@@ -220,6 +218,45 @@ class MainActivity : AppCompatActivity() {
         choosePreferredRemoteParticipant()
         hideUrlBar()
         enableButtonHiding()
+    }
+
+    private fun updateLocalVideoState() {
+
+        // Due to a bug in older versions of Android (including Android 9), it's not
+        // sufficient to simply hide a SurfaceView if it overlaps with another
+        // SurfaceView, so we destroy and recreate it as necessary.
+
+        fun hideLocalVideoView() {
+            localVideoView?.apply {
+                localContainer.removeView(this)
+            }
+            localVideoView = null
+            localCameraMaskView.visibility = View.VISIBLE
+        }
+
+        val track = localParticipant?.media?.camera?.track
+
+        if (localVideoToggle.isChecked) {
+
+            localContainer.visibility = View.VISIBLE
+
+            if (track != null && callClient.inputs().camera.isEnabled) {
+                val view: VideoView = localVideoView ?: run {
+                    val view = VideoView(this@MainActivity)
+                    localVideoView = view
+                    view.bringVideoToFront = true
+                    localContainer.addView(view)
+                    view
+                }
+                view.track = track
+                localCameraMaskView.visibility = View.GONE
+            } else {
+                hideLocalVideoView()
+            }
+        } else {
+            localContainer.visibility = View.GONE
+            hideLocalVideoView()
+        }
     }
 
     private fun hideUrlBar() {
@@ -470,19 +507,10 @@ class MainActivity : AppCompatActivity() {
         remoteCameraMaskView.text = message
     }
 
-    private fun updateLocalParticipantVideoView(participant: Participant) {
-        // make sure we are only handling local participants
-        if (!participant.info.isLocal) {
-            return
-        }
-
-        localVideoView.track = participant.media?.camera?.track
-        localVideoView.visibility = View.VISIBLE
-    }
-
     private fun updateParticipantVideoView(participant: Participant) {
         if (participant.info.isLocal) {
-            updateLocalParticipantVideoView(participant)
+            localParticipant = participant
+            updateLocalVideoState()
         } else {
             choosePreferredRemoteParticipant()
         }
@@ -514,7 +542,6 @@ class MainActivity : AppCompatActivity() {
         localContainer = findViewById(R.id.local_video_view_container)
         remoteContainer = findViewById(R.id.remote_video_view_container)
 
-        localVideoView = findViewById(R.id.local_video_view)
         remoteVideoView = findViewById(R.id.remote_video_view)
 
         localCameraMaskView = findViewById(R.id.local_camera_mask_view)
@@ -528,8 +555,8 @@ class MainActivity : AppCompatActivity() {
 
         localVideoToggle = findViewById(R.id.local_video_toggle)
 
-        localVideoToggle.setOnCheckedChangeListener { _, isChecked ->
-            localContainer?.visibility = if (isChecked) View.VISIBLE else View.GONE
+        localVideoToggle.setOnCheckedChangeListener { _, _ ->
+            updateLocalVideoState()
         }
 
         localVideoToggle.setOnClickListener {
@@ -771,7 +798,7 @@ class MainActivity : AppCompatActivity() {
                 try {
                     val url = addurl.text.toString()
                     prefs.lastUrl = url
-                    callClient.join(url, clientSettingsIntent)
+                    callClient.join(url, clientSettings = clientSettingsIntent)
                     callClient.setUserName("Android User")
                     val audioDeviceInUse = callClient.audioDevice()
                     Log.d(TAG, "Current audio route $audioDeviceInUse")
@@ -788,14 +815,14 @@ class MainActivity : AppCompatActivity() {
             callClient.leave()
         }
 
-        micInputButton.setOnCheckedChangeListener { _, isChecked -> toggleMicInput(isChecked) }
-        camInputButton.setOnCheckedChangeListener { _, isChecked -> toggleCamInput(isChecked) }
-        micPublishButton.setOnCheckedChangeListener { _, isChecked -> toggleMicPublish(isChecked) }
-        camPublishButton.setOnCheckedChangeListener { _, isChecked -> toggleCamPublish(isChecked) }
+        micInputButton.setOnClickListener { toggleMicInput(micInputButton.isChecked) }
+        camInputButton.setOnClickListener { toggleCamInput(camInputButton.isChecked) }
+        micPublishButton.setOnClickListener { toggleMicPublish(micPublishButton.isChecked) }
+        camPublishButton.setOnClickListener { toggleCamPublish(camPublishButton.isChecked) }
     }
 
     private fun initCallClient() {
-        callClient = CallClient(applicationContext, this.lifecycle).apply {
+        callClient = CallClient(applicationContext).apply {
             addListener(callClientListener)
         }
 
@@ -841,8 +868,7 @@ class MainActivity : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
         Log.d(TAG, "MainActivity on destroy has been invoked!")
-        localVideoView.release()
-        remoteVideoView.release()
+        callClient.release()
     }
 
     private fun checkPermissions() {
