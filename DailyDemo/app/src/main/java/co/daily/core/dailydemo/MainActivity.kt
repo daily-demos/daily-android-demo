@@ -2,8 +2,15 @@ package co.daily.core.dailydemo
 
 import android.animation.Animator
 import android.animation.AnimatorListenerAdapter
+import android.content.ComponentName
+import android.content.Context
+import android.content.Intent
+import android.content.ServiceConnection
 import android.content.pm.PackageManager
+import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
 import android.os.Bundle
+import android.os.IBinder
 import android.text.Editable
 import android.text.TextWatcher
 import android.util.Log
@@ -25,51 +32,20 @@ import android.widget.ToggleButton
 import androidx.activity.result.contract.ActivityResultContracts.RequestMultiplePermissions
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
-import androidx.lifecycle.lifecycleScope
-import co.daily.CallClient
-import co.daily.CallClientListener
-import co.daily.exception.UnknownCallClientError
-import co.daily.model.AvailableDevices
+import co.daily.core.dailydemo.remotevideochooser.RemoteVideoChooser
+import co.daily.core.dailydemo.remotevideochooser.RemoteVideoChooserAuto
+import co.daily.core.dailydemo.remotevideochooser.RemoteVideoChooserHide
+import co.daily.core.dailydemo.remotevideochooser.RemoteVideoChooserManual
+import co.daily.core.dailydemo.services.DemoActiveCallService
+import co.daily.core.dailydemo.services.DemoCallService
 import co.daily.model.CallState
 import co.daily.model.MediaDeviceInfo
-import co.daily.model.MediaState
-import co.daily.model.MediaStreamTrack
-import co.daily.model.Participant
-import co.daily.model.ParticipantId
-import co.daily.model.ParticipantVideoInfo
-import co.daily.settings.BitRate
-import co.daily.settings.CameraPublishingSettingsUpdate
-import co.daily.settings.ClientSettingsUpdate
-import co.daily.settings.Disable
-import co.daily.settings.Enable
-import co.daily.settings.FrameRate
-import co.daily.settings.InputSettings
-import co.daily.settings.InputSettingsUpdate
-import co.daily.settings.MicrophonePublishingSettingsUpdate
-import co.daily.settings.PublishingSettings
-import co.daily.settings.PublishingSettingsUpdate
-import co.daily.settings.Scale
-import co.daily.settings.VideoEncodingSettingsUpdate
-import co.daily.settings.VideoEncodingsSettingsUpdate
-import co.daily.settings.VideoMaxQualityUpdate
-import co.daily.settings.VideoSendSettingsUpdate
-import co.daily.settings.subscription.Subscribed
-import co.daily.settings.subscription.SubscriptionProfile
-import co.daily.settings.subscription.SubscriptionProfileSettings
-import co.daily.settings.subscription.SubscriptionProfileSettingsUpdate
-import co.daily.settings.subscription.SubscriptionSettings
-import co.daily.settings.subscription.SubscriptionSettingsUpdate
-import co.daily.settings.subscription.Unsubscribed
-import co.daily.settings.subscription.VideoReceiveSettingsUpdate
-import co.daily.settings.subscription.VideoSubscriptionSettingsUpdate
-import co.daily.settings.subscription.base
 import co.daily.view.VideoView
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import kotlinx.coroutines.launch
 
 private const val TAG = "daily_demo_app"
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : AppCompatActivity(), DemoStateListener {
 
     private val requestPermissionLauncher =
         registerForActivityResult(RequestMultiplePermissions()) { result ->
@@ -81,14 +57,33 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
+    private val serviceConnection = object : ServiceConnection {
+
+        override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
+            Log.i(TAG, "Connected to service")
+            callService = service!! as DemoCallService.Binder
+            callService?.addListener(this@MainActivity)
+        }
+
+        override fun onServiceDisconnected(name: ComponentName?) {
+            Log.i(TAG, "Disconnected from service")
+            callService = null
+        }
+    }
+
+    private var callService: DemoCallService.Binder? = null
+    private var demoState: DemoState? = null
+
     private lateinit var prefs: Preferences
 
+    private lateinit var layoutLoading: View
+    private lateinit var layoutCall: View
+
     private lateinit var addurl: EditText
-    private lateinit var callClient: CallClient
     private lateinit var localContainer: FrameLayout
-    private var remoteContainer: FrameLayout? = null
+    private lateinit var remoteContainer: FrameLayout
     private var localVideoView: VideoView? = null
-    private lateinit var remoteVideoView: VideoView
+    private var remoteVideoView: VideoView? = null
 
     private lateinit var urlBar: View
     private lateinit var bottomToolbars: View
@@ -110,10 +105,6 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var localCameraMaskView: TextView
     private lateinit var remoteCameraMaskView: TextView
-    private var displayedRemoteParticipant: Participant? = null
-
-    private var remoteVideoChoice: RemoteVideoChoice = RemoteVideoChoice.Auto
-    private var localParticipant: Participant? = null
 
     private var buttonHidingEnabled = false
     private val buttonHidingRunnable: Runnable = Runnable {
@@ -130,95 +121,7 @@ class MainActivity : AppCompatActivity() {
     // Set this to true to disable automatic show/hide of local video view
     private var userToggledLocalPreview: Boolean = false
 
-    // The default profiles that we are going to use
-    private val profileActiveCamera = SubscriptionProfile("activeCamera")
-    private val profileActiveScreenShare = SubscriptionProfile("activeScreenShare")
-
-    private var callClientListener = object : CallClientListener {
-
-        override fun onError(message: String) {
-            Log.d(TAG, "Received error $message")
-        }
-
-        override fun onCallStateUpdated(
-            state: CallState
-        ) {
-            Log.d(TAG, "onCallStateUpdated: $state")
-            when (state) {
-                CallState.joining -> {}
-                CallState.joined -> {
-                    onJoinedMeeting()
-                }
-                CallState.leaving -> {}
-                CallState.left -> {
-                    resetAppState()
-                }
-                CallState.new -> {}
-            }
-        }
-
-        override fun onInputsUpdated(inputSettings: InputSettings) {
-            Log.d(TAG, "onInputsUpdated: $inputSettings")
-            refreshInputPublishButtonsState()
-            updateLocalVideoState()
-        }
-
-        override fun onPublishingUpdated(publishingSettings: PublishingSettings) {
-            Log.d(TAG, "onPublishingUpdated: $publishingSettings")
-            refreshInputPublishButtonsState()
-        }
-
-        override fun onParticipantJoined(participant: Participant) {
-            Log.d(TAG, "onParticipantJoined: $participant")
-            updateParticipantVideoView(participant)
-        }
-
-        override fun onSubscriptionsUpdated(subscriptions: Map<ParticipantId, SubscriptionSettings>) {
-            Log.d(TAG, "onSubscriptionsUpdated: $subscriptions")
-        }
-
-        override fun onSubscriptionProfilesUpdated(subscriptionProfiles: Map<SubscriptionProfile, SubscriptionProfileSettings>) {
-            Log.d(TAG, "onSubscriptionProfilesUpdated: $subscriptionProfiles")
-        }
-
-        override fun onParticipantUpdated(participant: Participant) {
-            Log.d(TAG, "onParticipantUpdated: $participant")
-            updateParticipantVideoView(participant)
-        }
-
-        override fun onActiveSpeakerChanged(activeSpeaker: Participant?) {
-            Log.d(TAG, "onActiveSpeakerChanged: ${activeSpeaker?.info?.userName}")
-            choosePreferredRemoteParticipant()
-        }
-
-        override fun onParticipantLeft(participant: Participant) {
-            Log.d(TAG, "onParticipantLeft + ${participant.id}")
-
-            if (remoteVideoChoice is RemoteVideoChoice.Track &&
-                (remoteVideoChoice as RemoteVideoChoice.Track).participantId == participant.id
-            ) {
-                remoteVideoChoice = RemoteVideoChoice.Auto
-            }
-
-            if (participant.id == displayedRemoteParticipant?.id) {
-                displayedRemoteParticipant = null
-                choosePreferredRemoteParticipant()
-            }
-        }
-
-        override fun onAvailableDevicesUpdated(availableDevices: AvailableDevices) {
-            Log.d(TAG, "onAvailableDevicesUpdated $availableDevices")
-            populateSpinnerWithAvailableAudioDevices(availableDevices.audio)
-        }
-    }
-
-    private fun onJoinedMeeting() {
-        Log.i(TAG, "onJoinedMeeting")
-        inCallButtons.visibility = View.VISIBLE
-        choosePreferredRemoteParticipant()
-        hideUrlBar()
-        enableButtonHiding()
-    }
+    private var triggeredForegroundService = false
 
     private fun updateLocalVideoState() {
 
@@ -234,19 +137,17 @@ class MainActivity : AppCompatActivity() {
             localCameraMaskView.visibility = View.VISIBLE
         }
 
-        val track = localParticipant?.media?.camera?.track
+        val track = demoState?.localParticipantTrack
 
         if (localVideoToggle.isChecked) {
 
             localContainer.visibility = View.VISIBLE
 
-            if (track != null && callClient.inputs().camera.isEnabled) {
-                val view: VideoView = localVideoView ?: run {
-                    val view = VideoView(this@MainActivity)
-                    localVideoView = view
-                    view.bringVideoToFront = true
-                    localContainer.addView(view)
-                    view
+            if (track != null && demoState?.inputs?.cameraEnabled == true) {
+                val view: VideoView = localVideoView ?: VideoView(this@MainActivity).apply {
+                    localVideoView = this
+                    bringVideoToFront = true
+                    localContainer.addView(this)
                 }
                 view.track = track
                 localCameraMaskView.visibility = View.GONE
@@ -259,18 +160,11 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun hideUrlBar() {
-        urlBar.visibility = View.GONE
-    }
-
-    private fun showUrlBar() {
-        urlBar.visibility = View.VISIBLE
-    }
-
     private fun enableButtonHiding() {
-        // Hide the buttons after 3 seconds
-        bottomToolbars.postDelayed(buttonHidingRunnable, 3000)
-        buttonHidingEnabled = true
+        if (!buttonHidingEnabled) {
+            bottomToolbars.postDelayed(buttonHidingRunnable, 3000)
+            buttonHidingEnabled = true
+        }
     }
 
     private fun onShowButtons() {
@@ -288,231 +182,67 @@ class MainActivity : AppCompatActivity() {
         buttonHidingEnabled = false
     }
 
-    private fun setupParticipantSubscriptionProfiles() {
-        lifecycleScope.launch {
-            val subscriptionProfilesResult = callClient.updateSubscriptionProfiles(
-                mapOf(
-                    profileActiveCamera to
-                        SubscriptionProfileSettingsUpdate(
-                            camera = VideoSubscriptionSettingsUpdate(
-                                subscriptionState = Subscribed(),
-                                receiveSettings = VideoReceiveSettingsUpdate(
-                                    maxQuality = VideoMaxQualityUpdate.high
-                                )
-                            ),
-                            screenVideo = VideoSubscriptionSettingsUpdate(
-                                subscriptionState = Unsubscribed()
-                            )
-                        ),
-                    profileActiveScreenShare to
-                        SubscriptionProfileSettingsUpdate(
-                            camera = VideoSubscriptionSettingsUpdate(
-                                subscriptionState = Unsubscribed()
-                            ),
-                            screenVideo = VideoSubscriptionSettingsUpdate(
-                                subscriptionState = Subscribed(),
-                                receiveSettings = VideoReceiveSettingsUpdate(
-                                    maxQuality = VideoMaxQualityUpdate.high
-                                )
-                            )
-                        ),
-                    SubscriptionProfile.base to
-                        SubscriptionProfileSettingsUpdate(
-                            camera = VideoSubscriptionSettingsUpdate(
-                                subscriptionState = Unsubscribed()
-                            ),
-                            screenVideo = VideoSubscriptionSettingsUpdate(
-                                subscriptionState = Unsubscribed()
-                            )
-                        )
-                )
+    private fun updateRemoteVideoState(choice: RemoteVideoChooser.Choice?) {
+
+        val track = choice?.track
+
+        if (track != null && demoState?.status == CallState.joined) {
+
+            Log.i(
+                TAG,
+                "Switching to remote participant: ${choice.participant?.id}, $choice.trackType"
             )
-            Log.d(TAG, "subscription profiles result $subscriptionProfilesResult")
-        }
-    }
 
-    private fun resetAppState() {
-        addurl.isEnabled = true
-        joinButton.isEnabled = true
-        inCallButtons.visibility = View.GONE
-        clearRemoteVideoView()
-        remoteVideoChoice = RemoteVideoChoice.Auto
-        remoteCameraMaskView.text = resources.getText(R.string.join_meeting_instructions)
-        showUrlBar()
-        disableButtonHiding()
-
-        if (!userToggledLocalPreview) {
-            localVideoToggle.isChecked = true
-        }
-    }
-
-    private fun isMediaAvailable(info: ParticipantVideoInfo?): Boolean {
-        return when (info?.state) {
-            MediaState.blocked, MediaState.off, MediaState.interrupted -> false
-            MediaState.receivable, MediaState.loading, MediaState.playable -> true
-            null -> false
-        }
-    }
-
-    private fun choosePreferredRemoteParticipant() {
-
-        val allParticipants = callClient.participants().all
-
-        val participant: Participant?
-        val track: MediaStreamTrack?
-        val trackType: VideoTrackType?
-
-        when (remoteVideoChoice) {
-
-            RemoteVideoChoice.Hide -> {
-                participant = null
-                track = null
-                trackType = null
+            val view = remoteVideoView ?: VideoView(this).apply {
+                remoteContainer.addView(this)
+                remoteVideoView = this
+                background = ColorDrawable(Color.DKGRAY)
             }
 
-            RemoteVideoChoice.Auto -> {
-                val participantWhoIsSharingScreen =
-                    allParticipants.values.firstOrNull { isMediaAvailable(it.media?.screenVideo) }?.id
-
-                val activeSpeaker = callClient.activeSpeaker()?.takeUnless { it.info.isLocal }?.id
-
-                /*
-                    The preference is:
-                        - The participant who is sharing their screen
-                        - The active speaker
-                        - The last displayed remote participant
-                        - Any remote participant who has their video opened
-                */
-                val participantId = participantWhoIsSharingScreen
-                    ?: activeSpeaker
-                    ?: displayedRemoteParticipant?.id
-                    ?: callClient.participants().all.values.firstOrNull {
-                        !it.info.isLocal && isMediaAvailable(it.media?.camera)
-                    }?.id
-
-                // Get the latest information about the participant
-                participant = allParticipants[participantId]
-
-                if (isMediaAvailable(participant?.media?.screenVideo)) {
-                    track = participant?.media?.screenVideo?.track
-                    trackType = VideoTrackType.ScreenShare
-                } else if (isMediaAvailable(participant?.media?.camera)) {
-                    track = participant?.media?.camera?.track
-                    trackType = VideoTrackType.Camera
-                } else {
-                    track = null
-                    trackType = null
+            when (choice.trackType ?: VideoTrackType.Camera) {
+                VideoTrackType.Camera -> {
+                    view.videoScaleMode = VideoView.VideoScaleMode.FILL
+                    if (!userToggledLocalPreview) localVideoToggle.isChecked = true
+                }
+                VideoTrackType.ScreenShare -> {
+                    view.videoScaleMode = VideoView.VideoScaleMode.FIT
+                    if (!userToggledLocalPreview) localVideoToggle.isChecked = false
                 }
             }
 
-            is RemoteVideoChoice.Track -> {
-
-                val choice = remoteVideoChoice as RemoteVideoChoice.Track
-
-                trackType = choice.trackType
-                val participantId = choice.participantId
-                participant = allParticipants[participantId]
-
-                track = participant?.media?.run {
-                    when (trackType) {
-                        VideoTrackType.Camera -> camera.track
-                        VideoTrackType.ScreenShare -> screenVideo.track
-                    }
-                }
-            }
+            view.track = choice.track
+            remoteCameraMaskView.visibility = View.GONE
+        } else {
+            Log.i(TAG, "Hiding remote video view")
+            remoteContainer.removeView(remoteVideoView)
+            remoteVideoView = null
+            remoteCameraMaskView.visibility = View.VISIBLE
         }
-
-        renderRemoteParticipant(participant, track, trackType)
-    }
-
-    private fun renderRemoteParticipant(
-        participant: Participant?,
-        track: MediaStreamTrack?,
-        trackType: VideoTrackType?
-    ) {
-        Log.i(TAG, "Switching to remote participant: ${participant?.id}, $trackType")
-
-        displayedRemoteParticipant = participant
-
-        when (trackType ?: VideoTrackType.Camera) {
-            VideoTrackType.Camera -> {
-                remoteVideoView.videoScaleMode = VideoView.VideoScaleMode.FILL
-                if (!userToggledLocalPreview) localVideoToggle.isChecked = true
-            }
-            VideoTrackType.ScreenShare -> {
-                remoteVideoView.videoScaleMode = VideoView.VideoScaleMode.FIT
-                if (!userToggledLocalPreview) localVideoToggle.isChecked = false
-            }
-        }
-
-        remoteVideoView.track = track
-
-        val containsTrack = track != null
-        remoteCameraMaskView.visibility = if (containsTrack) View.GONE else View.VISIBLE
-        remoteVideoView.visibility = if (containsTrack) View.VISIBLE else View.GONE
-
-        updateRemoteCameraMaskViewMessage()
-        changePreferredRemoteParticipantSubscription(participant, trackType)
-    }
-
-    private fun changePreferredRemoteParticipantSubscription(
-        activeParticipant: Participant?,
-        trackType: VideoTrackType?
-    ) {
-        lifecycleScope.launch {
-            val subscriptionsResult = callClient.updateSubscriptions(
-                // Improve the video quality of the remote participant that is currently displayed
-                forParticipants = activeParticipant?.run {
-                    mapOf(
-                        id to SubscriptionSettingsUpdate(
-                            profile = when (trackType) {
-                                VideoTrackType.Camera -> profileActiveCamera
-                                VideoTrackType.ScreenShare -> profileActiveScreenShare
-                                null -> SubscriptionProfile.base
-                            }
-                        )
-                    )
-                } ?: mapOf(),
-                // Unsubscribe from remote participants not currently displayed
-                forParticipantsWithProfiles = mapOf(
-                    profileActiveCamera to SubscriptionSettingsUpdate(
-                        profile = SubscriptionProfile.base
-                    ),
-                    profileActiveScreenShare to SubscriptionSettingsUpdate(
-                        profile = SubscriptionProfile.base
-                    )
-                )
-            )
-            Log.d(TAG, "Update subscriptions result $subscriptionsResult")
-        }
-    }
-
-    private fun clearRemoteVideoView() {
-        remoteVideoView.track = null
-        remoteVideoView.visibility = View.GONE
-        displayedRemoteParticipant = null
-        remoteCameraMaskView.visibility = View.VISIBLE
     }
 
     private fun updateRemoteCameraMaskViewMessage() {
-        val message =
-            if (displayedRemoteParticipant != null)
-                displayedRemoteParticipant?.info?.userName ?: "Guest"
-            else
-                when (val amountOfParticipants = callClient.participants().all.size) {
-                    1 -> resources.getString(R.string.no_one_else_in_meeting)
-                    2 -> callClient.participants().all.filter { !it.value.info.isLocal }.entries.first().value.info.userName
-                    else -> resources.getString(R.string.amount_of_participants_at_meeting, amountOfParticipants - 1)
-                }
-        remoteCameraMaskView.text = message
-    }
 
-    private fun updateParticipantVideoView(participant: Participant) {
-        if (participant.info.isLocal) {
-            localParticipant = participant
-            updateLocalVideoState()
-        } else {
-            choosePreferredRemoteParticipant()
+        val state = demoState
+
+        remoteCameraMaskView.text = when (state?.status) {
+            CallState.initialized, CallState.leaving, CallState.left -> resources.getString(R.string.join_meeting_instructions)
+            CallState.joining -> resources.getString(R.string.joining)
+
+            CallState.joined -> if (state.displayedRemoteParticipant?.participant != null) {
+                state.displayedRemoteParticipant.participant.info.userName ?: "Guest"
+            } else {
+                val participants = state.allParticipants
+                when (val amountOfParticipants = participants.size) {
+                    1 -> resources.getString(R.string.no_one_else_in_meeting)
+                    2 -> participants.filter { !it.value.info.isLocal }.entries.first().value.info.userName
+                    else -> resources.getString(
+                        R.string.amount_of_participants_at_meeting,
+                        amountOfParticipants - 1
+                    )
+                }
+            }
+
+            null -> "Unknown state: waiting for service"
         }
     }
 
@@ -523,6 +253,9 @@ class MainActivity : AppCompatActivity() {
 
         setContentView(R.layout.activity_main)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+
+        layoutLoading = findViewById(R.id.main_activity_loading_layout)
+        layoutCall = findViewById(R.id.main_activity_call_layout)
 
         urlBar = findViewById(R.id.url_bar)
         bottomToolbars = findViewById(R.id.bottom_toolbars)
@@ -542,15 +275,13 @@ class MainActivity : AppCompatActivity() {
         localContainer = findViewById(R.id.local_video_view_container)
         remoteContainer = findViewById(R.id.remote_video_view_container)
 
-        remoteVideoView = findViewById(R.id.remote_video_view)
-
         localCameraMaskView = findViewById(R.id.local_camera_mask_view)
         remoteCameraMaskView = findViewById(R.id.remote_camera_mask_view)
 
         addurl = findViewById(R.id.aurl)
         prefs.lastUrl?.apply {
             addurl.setText(this)
-            joinButton.isEnabled = true
+            updateJoinButtonState()
         }
 
         localVideoToggle = findViewById(R.id.local_video_toggle)
@@ -594,32 +325,28 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun initialize() {
-        initCallClient()
+
+        if (!bindService(
+                Intent(
+                        this,
+                        DemoCallService::class.java
+                    ),
+                serviceConnection, Context.BIND_AUTO_CREATE or Context.BIND_IMPORTANT
+            )
+        ) {
+            throw RuntimeException("Failed to bind to call service")
+        }
+
         initEventListeners()
-        loadAudioDevice()
-    }
-
-    private enum class VideoTrackType {
-        Camera,
-        ScreenShare
-    }
-
-    private sealed class RemoteVideoChoice {
-        object Hide : RemoteVideoChoice()
-        object Auto : RemoteVideoChoice()
-        data class Track(
-            val participantId: ParticipantId,
-            val trackType: VideoTrackType
-        ) : RemoteVideoChoice()
     }
 
     private fun showMenuChangeRemoteVideo() {
 
-        data class RemoteVideoMenuChoice(val name: String, val choice: RemoteVideoChoice)
+        data class RemoteVideoMenuChoice(val name: String, val choice: RemoteVideoChooser)
 
         val choices = ArrayList<RemoteVideoMenuChoice>()
 
-        callClient.participants().all.forEach {
+        demoState?.allParticipants?.forEach {
 
             val username = if (it.value.info.isLocal) {
                 getString(R.string.me)
@@ -627,20 +354,20 @@ class MainActivity : AppCompatActivity() {
                 (it.value.info.userName ?: it.key.uuid.toString())
             }
 
-            if (isMediaAvailable(it.value.media?.camera)) {
+            if (Utils.isMediaAvailable(it.value.media?.camera)) {
                 choices.add(
                     RemoteVideoMenuChoice(
                         resources.getString(R.string.username_with_camera, username),
-                        RemoteVideoChoice.Track(it.key, VideoTrackType.Camera)
+                        RemoteVideoChooserManual(it.key, VideoTrackType.Camera)
                     )
                 )
             }
 
-            if (isMediaAvailable(it.value.media?.screenVideo)) {
+            if (Utils.isMediaAvailable(it.value.media?.screenVideo)) {
                 choices.add(
                     RemoteVideoMenuChoice(
                         resources.getString(R.string.username_with_screen_share, username),
-                        RemoteVideoChoice.Track(it.key, VideoTrackType.ScreenShare)
+                        RemoteVideoChooserManual(it.key, VideoTrackType.ScreenShare)
                     )
                 )
             }
@@ -651,20 +378,20 @@ class MainActivity : AppCompatActivity() {
         choices.add(
             0,
             RemoteVideoMenuChoice(
-                getString(R.string.remote_video_hide),
-                RemoteVideoChoice.Hide
+                getString(R.string.remote_video_active_speaker),
+                RemoteVideoChooserAuto
             )
         )
 
         choices.add(
             1,
             RemoteVideoMenuChoice(
-                getString(R.string.remote_video_active_speaker),
-                RemoteVideoChoice.Auto
+                getString(R.string.remote_video_hide),
+                RemoteVideoChooserHide
             )
         )
 
-        val checkedItem = choices.indexOfFirst { it.choice == remoteVideoChoice }
+        val checkedItem = choices.indexOfFirst { it.choice == demoState?.remoteVideoChooser }
             .coerceAtLeast(0)
 
         MaterialAlertDialogBuilder(this)
@@ -675,96 +402,12 @@ class MainActivity : AppCompatActivity() {
             ) { _, which ->
                 val item = choices[which]
                 Log.i(TAG, "Selected remote track: ${item.name}")
-                remoteVideoChoice = item.choice
-                choosePreferredRemoteParticipant()
+                callService?.setRemoteVideoChooser(item.choice)
             }
             .setNegativeButton("Close") { dialog, _ ->
                 dialog.dismiss()
             }
             .show()
-    }
-
-    private fun toggleCamInput(enabled: Boolean) {
-        Log.d(TAG, "toggleCamInput $enabled")
-        lifecycleScope.launch {
-            callClient.updateInputs(
-                inputSettings = InputSettingsUpdate(
-                    camera = if (enabled) Enable() else Disable()
-                )
-            )
-        }
-    }
-
-    private fun toggleMicInput(enabled: Boolean) {
-        Log.d(TAG, "toggleMicInput $enabled")
-        lifecycleScope.launch {
-            callClient.updateInputs(
-                inputSettings = InputSettingsUpdate(
-                    microphone = if (enabled) Enable() else Disable()
-                )
-            )
-        }
-    }
-
-    private fun toggleMicPublish(enabled: Boolean) {
-        Log.d(TAG, "toggleMicPublish $enabled")
-        lifecycleScope.launch {
-            callClient.updatePublishing(
-                publishSettings = PublishingSettingsUpdate(
-                    microphone = MicrophonePublishingSettingsUpdate(
-                        isPublishing = if (enabled) Enable() else Disable()
-                    )
-                )
-            )
-        }
-    }
-
-    private fun toggleCamPublish(enabled: Boolean) {
-        Log.d(TAG, "toggleCamPublish $enabled")
-        lifecycleScope.launch {
-            callClient.updatePublishing(
-                publishSettings = PublishingSettingsUpdate(
-                    camera = CameraPublishingSettingsUpdate(
-                        isPublishing = if (enabled) Enable() else Disable()
-                    )
-                )
-            )
-        }
-    }
-
-    private fun refreshInputPublishButtonsState() {
-        micInputButton.isChecked = callClient.inputs().microphone.isEnabled
-        camInputButton.isChecked = callClient.inputs().camera.isEnabled
-        micPublishButton.isChecked = callClient.publishing().microphone.isPublishing
-        camPublishButton.isChecked = callClient.publishing().camera.isPublishing
-    }
-
-    private fun createClientSettingsIntent(): ClientSettingsUpdate {
-        val publishingSettingsIntent = PublishingSettingsUpdate(
-            camera = CameraPublishingSettingsUpdate(
-                sendSettings = VideoSendSettingsUpdate(
-                    encodings = VideoEncodingsSettingsUpdate(
-                        settings = mapOf(
-                            VideoMaxQualityUpdate.low to
-                                VideoEncodingSettingsUpdate(
-                                    maxBitrate = BitRate(80000),
-                                    maxFramerate = FrameRate(10),
-                                    scaleResolutionDownBy = Scale(4F)
-                                ),
-                            VideoMaxQualityUpdate.medium to
-                                VideoEncodingSettingsUpdate(
-                                    maxBitrate = BitRate(680000),
-                                    maxFramerate = FrameRate(30),
-                                    scaleResolutionDownBy = Scale(1F)
-                                )
-                        )
-                    )
-                )
-            )
-        )
-        return ClientSettingsUpdate(
-            publishingSettings = publishingSettingsIntent
-        )
     }
 
     private fun showMessage(message: String) {
@@ -777,75 +420,55 @@ class MainActivity : AppCompatActivity() {
         toast.show()
     }
 
+    private fun updateJoinButtonState() {
+        joinButton.isEnabled = when (demoState?.status) {
+            CallState.initialized, CallState.left -> {
+                Patterns.WEB_URL.matcher(addurl.text.toString()).matches()
+            }
+            CallState.joined, CallState.joining, CallState.leaving -> false
+            null -> false
+        }
+    }
+
     private fun initEventListeners() {
         addurl.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
 
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
-                val containsUrl = Patterns.WEB_URL.matcher(addurl.text.toString()).matches()
-                joinButton.isEnabled = containsUrl
+                updateJoinButtonState()
             }
 
             override fun afterTextChanged(s: Editable?) {}
         })
 
-        val clientSettingsIntent = createClientSettingsIntent()
         joinButton.setOnClickListener {
             // Only enable leave after joined
             joinButton.isEnabled = false
             addurl.isEnabled = false
-            lifecycleScope.launch {
-                try {
-                    val url = addurl.text.toString()
-                    prefs.lastUrl = url
-                    callClient.join(url, clientSettings = clientSettingsIntent)
-                    callClient.setUserName("Android User")
-                    val audioDeviceInUse = callClient.audioDevice()
-                    Log.d(TAG, "Current audio route $audioDeviceInUse")
-                } catch (e: UnknownCallClientError) {
-                    Log.e(TAG, "Failed to join call", e)
-                    callClient.leave()
-                    showMessage("Failed to join call")
-                }
-            }
+            val url = addurl.text.toString()
+            prefs.lastUrl = url
+
+            callService!!.join(url)
+            callService!!.setUsername("Android User")
         }
 
         leaveButton.setOnClickListener {
             inCallButtons.visibility = View.GONE
-            callClient.leave()
+            callService!!.leave()
         }
 
-        micInputButton.setOnClickListener { toggleMicInput(micInputButton.isChecked) }
-        camInputButton.setOnClickListener { toggleCamInput(camInputButton.isChecked) }
-        micPublishButton.setOnClickListener { toggleMicPublish(micPublishButton.isChecked) }
-        camPublishButton.setOnClickListener { toggleCamPublish(camPublishButton.isChecked) }
-    }
-
-    private fun initCallClient() {
-        callClient = CallClient(applicationContext).apply {
-            addListener(callClientListener)
-        }
-
-        // By default, we are always starting the demo app with the mic and camera on
-        lifecycleScope.launch {
-            callClient.updateInputs(
-                inputSettings = InputSettingsUpdate(
-                    microphone = Enable(),
-                    camera = Enable()
-                )
-            )
-            refreshInputPublishButtonsState()
-        }
-
-        setupParticipantSubscriptionProfiles()
-    }
-
-    private fun loadAudioDevice() {
-        val audioDevices = callClient.availableDevices().audio
-        populateSpinnerWithAvailableAudioDevices(audioDevices)
+        micInputButton.setOnClickListener { callService?.toggleMicInput(micInputButton.isChecked) }
+        camInputButton.setOnClickListener { callService?.toggleCamInput(camInputButton.isChecked) }
+        micPublishButton.setOnClickListener { callService?.toggleMicPublishing(micPublishButton.isChecked) }
+        camPublishButton.setOnClickListener { callService?.toggleCamPublishing(camPublishButton.isChecked) }
     }
 
     private fun populateSpinnerWithAvailableAudioDevices(audioDevices: List<MediaDeviceInfo>) {
+
+        val selectedDeviceIndex = audioDevices.indexOfFirst {
+            it.deviceId == demoState?.activeAudioDevice
+        }.takeUnless { it == -1 }
+
         val adapter = ArrayAdapter(
             this, android.R.layout.simple_dropdown_item_1line,
             audioDevices.map {
@@ -853,13 +476,13 @@ class MainActivity : AppCompatActivity() {
             }
         )
         audioDevicesSpinner.adapter = adapter
+
+        audioDevicesSpinner.setSelection(selectedDeviceIndex ?: 0)
+
         audioDevicesSpinner.onItemSelectedListener = object :
             AdapterView.OnItemSelectedListener {
-            override fun onItemSelected(parent: AdapterView<*>, view: View?, position: Int, id: Long) {
-                val mediaDevice = audioDevices[position]
-                lifecycleScope.launch() {
-                    callClient.setAudioDevice(mediaDevice.deviceId)
-                }
+            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+                callService?.setAudioDevice(audioDevices[position])
             }
             override fun onNothingSelected(parent: AdapterView<*>?) {}
         }
@@ -868,7 +491,8 @@ class MainActivity : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
         Log.d(TAG, "MainActivity on destroy has been invoked!")
-        callClient.release()
+        callService?.removeListener(this)
+        unbindService(serviceConnection)
     }
 
     private fun checkPermissions() {
@@ -889,5 +513,76 @@ class MainActivity : AppCompatActivity() {
             // permission is granted, we can initialize
             initialize()
         }
+    }
+
+    override fun onStateChanged(newState: DemoState) {
+        Log.i(TAG, "onCallStateChanged: $newState")
+
+        demoState = newState
+
+        layoutLoading.visibility = View.GONE
+        layoutCall.visibility = View.VISIBLE
+
+        updateLocalVideoState()
+        updateRemoteVideoState(newState.displayedRemoteParticipant)
+
+        populateSpinnerWithAvailableAudioDevices(newState.availableDevices.audio)
+
+        micInputButton.isChecked = newState.inputs.micEnabled
+        camInputButton.isChecked = newState.inputs.cameraEnabled
+        micPublishButton.isChecked = newState.publishing.micEnabled
+        camPublishButton.isChecked = newState.publishing.cameraEnabled
+
+        updateJoinButtonState()
+        updateRemoteCameraMaskViewMessage()
+
+        when (newState.status) {
+            CallState.initialized, CallState.left -> {
+                inCallButtons.visibility = View.GONE
+                urlBar.visibility = View.VISIBLE
+                addurl.isEnabled = true
+                disableButtonHiding()
+
+                if (!userToggledLocalPreview) {
+                    localVideoToggle.isChecked = true
+                }
+
+                triggeredForegroundService = false
+            }
+            CallState.joining, CallState.leaving -> {
+                inCallButtons.visibility = View.GONE
+                urlBar.visibility = View.VISIBLE
+                addurl.isEnabled = false
+                disableButtonHiding()
+            }
+            CallState.joined -> {
+                inCallButtons.visibility = View.VISIBLE
+                urlBar.visibility = View.GONE
+                enableButtonHiding()
+
+                if (!triggeredForegroundService) {
+
+                    // Start the foreground service to keep the call alive
+
+                    Log.i(TAG, "Starting foreground service")
+
+                    ContextCompat.startForegroundService(
+                        this,
+                        Intent(this, DemoActiveCallService::class.java)
+                    )
+
+                    triggeredForegroundService = true
+                }
+            }
+        }
+    }
+
+    override fun onError(msg: String) {
+        Log.e(TAG, "Got error: $msg")
+        showMessage(msg)
+    }
+
+    override fun onBackPressed() {
+        finish()
     }
 }

@@ -13,8 +13,12 @@
     <string name="local_camera">Local Camera</string>
     <string name="audio_route">Audio</string>
     <string name="no_one_else_in_meeting">No one else is in the meeting</string>
-    <string name="join_meeting_instructions">Enter the room URL and click JOIN!</string>
+    <string name="join_meeting_instructions">Enter the room URL and click Join!</string>
+    <string name="joining">Joining…</string>
     <string name="amount_of_participants_at_meeting">There is %d other participants on this meeting</string>
+
+    <string name="service_notification_title">Daily call in progress</string>
+    <string name="service_notification_message">Tap to return to the call.</string>
 
     <string name="more_options">More Options</string>
     <string name="call_option_change_remote_video">Remote video…</string>
