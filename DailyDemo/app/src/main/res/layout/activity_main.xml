@@ -1,409 +1,424 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout
+<FrameLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
-    android:id="@+id/activity_main"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/mainBackground"
     tools:context=".MainActivity">
 
-    <!--
-        Container for remote video view: fills the whole display.
-    -->
-
-    <FrameLayout
-        android:id="@+id/remote_video_view_container"
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/main_activity_loading_layout"
         android:layout_width="match_parent"
         android:layout_height="match_parent">
 
-        <co.daily.view.VideoView
-            android:id="@+id/remote_video_view"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:background="@color/videoBackground"
-            android:visibility="gone"
-            app:daily_bring_to_front="false"
-            app:daily_scale_mode="fill"/>
-
-        <TextView
-            android:id="@+id/remote_camera_mask_view"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:gravity="center|center_vertical"
-            android:text="@string/join_meeting_instructions" />
-    </FrameLayout>
-
-    <!--
-        Floating toolbar with buttons and URL field
-    -->
-
-    <androidx.constraintlayout.widget.ConstraintLayout
-        android:id="@+id/bottom_toolbars"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        app:layout_constraintBottom_toBottomOf="parent"
-        android:animateLayoutChanges="true">
-
-        <com.google.android.flexbox.FlexboxLayout
-            android:id="@+id/media_controls"
+        <ImageView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             app:layout_constraintTop_toTopOf="parent"
-            app:layout_constraintBottom_toTopOf="@id/url_bar"
+            app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
-            android:layout_marginBottom="5dp"
-            app:justifyContent="center"
-            app:flexWrap="wrap"
-            android:animateLayoutChanges="true">
+            android:src="@mipmap/ic_launcher"
+            tools:ignore="ContentDescription" />
 
-            <androidx.constraintlayout.widget.ConstraintLayout
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_margin="5dp"
-                android:paddingStart="5dp"
-                android:paddingEnd="5dp"
-                android:background="@drawable/round_outline">
+    </androidx.constraintlayout.widget.ConstraintLayout>
 
-                <TextView
-                    android:id="@+id/inputs"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    app:layout_constraintStart_toStartOf="parent"
-                    app:layout_constraintEnd_toEndOf="parent"
-                    app:layout_constraintTop_toTopOf="parent"
-                    app:layout_constraintBottom_toTopOf="@id/input_buttons"
-                    android:layout_marginStart="10dp"
-                    android:layout_marginEnd="10dp"
-                    android:layout_marginTop="5dp"
-                    android:text="@string/inputs" />
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/main_activity_call_layout"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="gone">
 
-                <androidx.appcompat.widget.LinearLayoutCompat
-                    android:id="@+id/input_buttons"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    app:layout_constraintTop_toBottomOf="@id/inputs"
-                    app:layout_constraintBottom_toBottomOf="parent"
-                    app:layout_constraintLeft_toLeftOf="parent"
-                    app:layout_constraintRight_toRightOf="parent">
+        <!--
+            Container for remote video view: fills the whole display.
+        -->
 
-                    <androidx.appcompat.widget.AppCompatToggleButton
-                        android:id="@+id/input_mic_button"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:backgroundTint="@color/toggle_button"
-                        android:drawableStart="@drawable/toggle_button_mic_icon"
-                        android:textOn="@null"
-                        android:textOff="@null"
-                        android:text="@null"
-                        android:minWidth="0dp"
-                        android:minHeight="0dp"
-                        android:contentDescription="@string/input_mic" />
+        <FrameLayout
+            android:id="@+id/remote_video_view_container"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
 
-                    <androidx.appcompat.widget.AppCompatToggleButton
-                        android:id="@+id/input_camera_button"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:backgroundTint="@color/toggle_button"
-                        android:drawableStart="@drawable/toggle_button_video_icon"
-                        android:textOn="@null"
-                        android:textOff="@null"
-                        android:text="@null"
-                        android:minWidth="0dp"
-                        android:minHeight="0dp"
-                        android:contentDescription="@string/input_camera" />
+            <TextView
+                android:id="@+id/remote_camera_mask_view"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:gravity="center|center_vertical"
+                android:text="@string/join_meeting_instructions" />
+        </FrameLayout>
 
-                </androidx.appcompat.widget.LinearLayoutCompat>
-
-            </androidx.constraintlayout.widget.ConstraintLayout>
-
-            <androidx.constraintlayout.widget.ConstraintLayout
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_margin="5dp"
-                android:paddingStart="5dp"
-                android:paddingEnd="5dp"
-                android:background="@drawable/round_outline">
-
-                <TextView
-                    android:id="@+id/publish"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    app:layout_constraintStart_toStartOf="parent"
-                    app:layout_constraintEnd_toEndOf="parent"
-                    app:layout_constraintTop_toTopOf="parent"
-                    app:layout_constraintBottom_toTopOf="@id/publish_buttons"
-                    android:layout_marginStart="10dp"
-                    android:layout_marginEnd="10dp"
-                    android:layout_marginTop="5dp"
-                    android:text="@string/publish" />
-
-                <androidx.appcompat.widget.LinearLayoutCompat
-                    android:id="@+id/publish_buttons"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    app:layout_constraintTop_toBottomOf="@id/publish"
-                    app:layout_constraintBottom_toBottomOf="parent"
-                    app:layout_constraintLeft_toLeftOf="parent"
-                    app:layout_constraintRight_toRightOf="parent">
-
-                    <androidx.appcompat.widget.AppCompatToggleButton
-                        android:id="@+id/publish_mic_button"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:backgroundTint="@color/toggle_button"
-                        android:drawableStart="@drawable/toggle_button_mic_icon"
-                        android:textOn="@null"
-                        android:textOff="@null"
-                        android:text="@null"
-                        android:minWidth="0dp"
-                        android:minHeight="0dp"
-                        android:contentDescription="@string/publish_mic" />
-
-                    <androidx.appcompat.widget.AppCompatToggleButton
-                        android:id="@+id/publish_camera_button"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:backgroundTint="@color/toggle_button"
-                        android:drawableStart="@drawable/toggle_button_video_icon"
-                        android:textOn="@null"
-                        android:textOff="@null"
-                        android:text="@null"
-                        android:minWidth="0dp"
-                        android:minHeight="0dp"
-                        android:contentDescription="@string/publish_camera" />
-
-                </androidx.appcompat.widget.LinearLayoutCompat>
-
-            </androidx.constraintlayout.widget.ConstraintLayout>
-
-            <androidx.constraintlayout.widget.ConstraintLayout
-                android:id="@+id/in_call_buttons"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_margin="5dp"
-                android:visibility="gone"
-                android:paddingStart="5dp"
-                android:paddingEnd="5dp"
-                android:background="@drawable/round_outline">
-
-                <TextView
-                    android:id="@+id/active_call_text"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    app:layout_constraintStart_toStartOf="parent"
-                    app:layout_constraintEnd_toEndOf="parent"
-                    app:layout_constraintTop_toTopOf="parent"
-                    app:layout_constraintBottom_toTopOf="@id/active_call_buttons"
-                    android:layout_marginStart="10dp"
-                    android:layout_marginEnd="10dp"
-                    android:layout_marginTop="5dp"
-                    android:text="@string/active_call_buttons" />
-
-                <androidx.appcompat.widget.LinearLayoutCompat
-                    android:id="@+id/active_call_buttons"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    app:layout_constraintTop_toBottomOf="@id/active_call_text"
-                    app:layout_constraintBottom_toBottomOf="parent"
-                    app:layout_constraintLeft_toLeftOf="parent"
-                    app:layout_constraintRight_toRightOf="parent">
-
-                    <ImageButton
-                        android:id="@+id/more_options_button"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:backgroundTint="@color/colorToolbarButton"
-                        android:contentDescription="@string/more_options"
-                        app:srcCompat="@drawable/dots_vertical" />
-
-                    <ImageButton
-                        android:id="@+id/hangup_button"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:backgroundTint="@color/colorToolbarButton"
-                        android:contentDescription="@string/hangup_button"
-                        app:srcCompat="@drawable/exit_call" />
-
-                </androidx.appcompat.widget.LinearLayoutCompat>
-
-            </androidx.constraintlayout.widget.ConstraintLayout>
-
-            <androidx.constraintlayout.widget.ConstraintLayout
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_margin="5dp"
-                android:paddingStart="5dp"
-                android:paddingEnd="5dp"
-                android:background="@drawable/round_outline">
-
-                <TextView
-                    android:id="@+id/audioRoute"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    app:layout_constraintStart_toStartOf="parent"
-                    app:layout_constraintEnd_toEndOf="parent"
-                    app:layout_constraintTop_toTopOf="parent"
-                    app:layout_constraintBottom_toTopOf="@id/audio_route_layout"
-                    android:layout_marginStart="10dp"
-                    android:layout_marginEnd="10dp"
-                    android:layout_marginTop="5dp"
-                    android:text="@string/audio_route" />
-
-                <androidx.appcompat.widget.LinearLayoutCompat
-                    android:id="@+id/audio_route_layout"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    app:layout_constraintTop_toBottomOf="@id/audioRoute"
-                    app:layout_constraintBottom_toBottomOf="parent"
-                    app:layout_constraintLeft_toLeftOf="parent"
-                    app:layout_constraintRight_toRightOf="parent">
-
-                    <Spinner
-                        android:id="@+id/audio_devices_spinner"
-                        android:layout_width="wrap_content"
-                        android:layout_height="42dp"
-                        android:layout_weight="1" />
-
-                </androidx.appcompat.widget.LinearLayoutCompat>
-
-            </androidx.constraintlayout.widget.ConstraintLayout>
-
-        </com.google.android.flexbox.FlexboxLayout>
+        <!--
+            Floating toolbar with buttons and URL field
+        -->
 
         <androidx.constraintlayout.widget.ConstraintLayout
-            android:id="@+id/url_bar"
+            android:id="@+id/bottom_toolbars"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            app:layout_constraintTop_toBottomOf="@id/media_controls"
             app:layout_constraintBottom_toBottomOf="parent"
-            android:layout_margin="10dp"
-            android:layout_marginTop="0dp"
-            android:paddingStart="10dp"
-            android:paddingEnd="10dp"
-            android:background="@drawable/round_outline">
+            android:animateLayoutChanges="true">
 
-            <EditText
-                android:id="@+id/aurl"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintEnd_toStartOf="@id/call_button"
-                app:layout_constraintTop_toTopOf="parent"
-                app:layout_constraintBottom_toBottomOf="parent"
-                android:autofillHints=""
-                android:hint="@string/tap_to_enter_room_url"
-                android:inputType="textUri"
-                android:maxLines="1"
-                android:textColorHint="#546E7A"
-                android:textSize="18sp" />
-
-            <Button
-                android:id="@+id/call_button"
-                style="?android:attr/buttonBarButtonStyle"
+            <com.google.android.flexbox.FlexboxLayout
+                android:id="@+id/media_controls"
                 android:layout_width="wrap_content"
-                android:layout_height="match_parent"
-                app:layout_constraintStart_toEndOf="@id/aurl"
-                app:layout_constraintEnd_toEndOf="parent"
+                android:layout_height="wrap_content"
                 app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintBottom_toTopOf="@id/url_bar"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                android:layout_marginBottom="5dp"
+                app:justifyContent="center"
+                app:flexWrap="wrap"
+                android:animateLayoutChanges="true">
+
+                <androidx.constraintlayout.widget.ConstraintLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_margin="5dp"
+                    android:paddingStart="5dp"
+                    android:paddingEnd="5dp"
+                    android:background="@drawable/round_outline">
+
+                    <TextView
+                        android:id="@+id/inputs"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintEnd_toEndOf="parent"
+                        app:layout_constraintTop_toTopOf="parent"
+                        app:layout_constraintBottom_toTopOf="@id/input_buttons"
+                        android:layout_marginStart="10dp"
+                        android:layout_marginEnd="10dp"
+                        android:layout_marginTop="5dp"
+                        android:text="@string/inputs" />
+
+                    <androidx.appcompat.widget.LinearLayoutCompat
+                        android:id="@+id/input_buttons"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        app:layout_constraintTop_toBottomOf="@id/inputs"
+                        app:layout_constraintBottom_toBottomOf="parent"
+                        app:layout_constraintLeft_toLeftOf="parent"
+                        app:layout_constraintRight_toRightOf="parent">
+
+                        <androidx.appcompat.widget.AppCompatToggleButton
+                            android:id="@+id/input_mic_button"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:backgroundTint="@color/toggle_button"
+                            android:drawableStart="@drawable/toggle_button_mic_icon"
+                            android:textOn="@null"
+                            android:textOff="@null"
+                            android:text="@null"
+                            android:minWidth="0dp"
+                            android:minHeight="0dp"
+                            android:contentDescription="@string/input_mic" />
+
+                        <androidx.appcompat.widget.AppCompatToggleButton
+                            android:id="@+id/input_camera_button"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:backgroundTint="@color/toggle_button"
+                            android:drawableStart="@drawable/toggle_button_video_icon"
+                            android:textOn="@null"
+                            android:textOff="@null"
+                            android:text="@null"
+                            android:minWidth="0dp"
+                            android:minHeight="0dp"
+                            android:contentDescription="@string/input_camera" />
+
+                    </androidx.appcompat.widget.LinearLayoutCompat>
+
+                </androidx.constraintlayout.widget.ConstraintLayout>
+
+                <androidx.constraintlayout.widget.ConstraintLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_margin="5dp"
+                    android:paddingStart="5dp"
+                    android:paddingEnd="5dp"
+                    android:background="@drawable/round_outline">
+
+                    <TextView
+                        android:id="@+id/publish"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintEnd_toEndOf="parent"
+                        app:layout_constraintTop_toTopOf="parent"
+                        app:layout_constraintBottom_toTopOf="@id/publish_buttons"
+                        android:layout_marginStart="10dp"
+                        android:layout_marginEnd="10dp"
+                        android:layout_marginTop="5dp"
+                        android:text="@string/publish" />
+
+                    <androidx.appcompat.widget.LinearLayoutCompat
+                        android:id="@+id/publish_buttons"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        app:layout_constraintTop_toBottomOf="@id/publish"
+                        app:layout_constraintBottom_toBottomOf="parent"
+                        app:layout_constraintLeft_toLeftOf="parent"
+                        app:layout_constraintRight_toRightOf="parent">
+
+                        <androidx.appcompat.widget.AppCompatToggleButton
+                            android:id="@+id/publish_mic_button"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:backgroundTint="@color/toggle_button"
+                            android:drawableStart="@drawable/toggle_button_mic_icon"
+                            android:textOn="@null"
+                            android:textOff="@null"
+                            android:text="@null"
+                            android:minWidth="0dp"
+                            android:minHeight="0dp"
+                            android:contentDescription="@string/publish_mic" />
+
+                        <androidx.appcompat.widget.AppCompatToggleButton
+                            android:id="@+id/publish_camera_button"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:backgroundTint="@color/toggle_button"
+                            android:drawableStart="@drawable/toggle_button_video_icon"
+                            android:textOn="@null"
+                            android:textOff="@null"
+                            android:text="@null"
+                            android:minWidth="0dp"
+                            android:minHeight="0dp"
+                            android:contentDescription="@string/publish_camera" />
+
+                    </androidx.appcompat.widget.LinearLayoutCompat>
+
+                </androidx.constraintlayout.widget.ConstraintLayout>
+
+                <androidx.constraintlayout.widget.ConstraintLayout
+                    android:id="@+id/in_call_buttons"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_margin="5dp"
+                    android:visibility="gone"
+                    android:paddingStart="5dp"
+                    android:paddingEnd="5dp"
+                    android:background="@drawable/round_outline">
+
+                    <TextView
+                        android:id="@+id/active_call_text"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintEnd_toEndOf="parent"
+                        app:layout_constraintTop_toTopOf="parent"
+                        app:layout_constraintBottom_toTopOf="@id/active_call_buttons"
+                        android:layout_marginStart="10dp"
+                        android:layout_marginEnd="10dp"
+                        android:layout_marginTop="5dp"
+                        android:text="@string/active_call_buttons" />
+
+                    <androidx.appcompat.widget.LinearLayoutCompat
+                        android:id="@+id/active_call_buttons"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        app:layout_constraintTop_toBottomOf="@id/active_call_text"
+                        app:layout_constraintBottom_toBottomOf="parent"
+                        app:layout_constraintLeft_toLeftOf="parent"
+                        app:layout_constraintRight_toRightOf="parent">
+
+                        <ImageButton
+                            android:id="@+id/more_options_button"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:backgroundTint="@color/colorToolbarButton"
+                            android:contentDescription="@string/more_options"
+                            app:srcCompat="@drawable/dots_vertical" />
+
+                        <ImageButton
+                            android:id="@+id/hangup_button"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:backgroundTint="@color/colorToolbarButton"
+                            android:contentDescription="@string/hangup_button"
+                            app:srcCompat="@drawable/exit_call" />
+
+                    </androidx.appcompat.widget.LinearLayoutCompat>
+
+                </androidx.constraintlayout.widget.ConstraintLayout>
+
+                <androidx.constraintlayout.widget.ConstraintLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_margin="5dp"
+                    android:paddingStart="5dp"
+                    android:paddingEnd="5dp"
+                    android:background="@drawable/round_outline">
+
+                    <TextView
+                        android:id="@+id/audioRoute"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintEnd_toEndOf="parent"
+                        app:layout_constraintTop_toTopOf="parent"
+                        app:layout_constraintBottom_toTopOf="@id/audio_route_layout"
+                        android:layout_marginStart="10dp"
+                        android:layout_marginEnd="10dp"
+                        android:layout_marginTop="5dp"
+                        android:text="@string/audio_route" />
+
+                    <androidx.appcompat.widget.LinearLayoutCompat
+                        android:id="@+id/audio_route_layout"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        app:layout_constraintTop_toBottomOf="@id/audioRoute"
+                        app:layout_constraintBottom_toBottomOf="parent"
+                        app:layout_constraintLeft_toLeftOf="parent"
+                        app:layout_constraintRight_toRightOf="parent">
+
+                        <Spinner
+                            android:id="@+id/audio_devices_spinner"
+                            android:layout_width="wrap_content"
+                            android:layout_height="42dp"
+                            android:layout_weight="1" />
+
+                    </androidx.appcompat.widget.LinearLayoutCompat>
+
+                </androidx.constraintlayout.widget.ConstraintLayout>
+
+            </com.google.android.flexbox.FlexboxLayout>
+
+            <androidx.constraintlayout.widget.ConstraintLayout
+                android:id="@+id/url_bar"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:layout_constraintTop_toBottomOf="@id/media_controls"
                 app:layout_constraintBottom_toBottomOf="parent"
-                android:minWidth="72dp"
-                android:enabled="false"
-                android:text="@string/call_button"
-                android:visibility="visible" />
+                android:layout_margin="10dp"
+                android:layout_marginTop="0dp"
+                android:paddingStart="10dp"
+                android:paddingEnd="10dp"
+                android:background="@drawable/round_outline">
+
+                <EditText
+                    android:id="@+id/aurl"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintEnd_toStartOf="@id/call_button"
+                    app:layout_constraintTop_toTopOf="parent"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    android:autofillHints=""
+                    android:hint="@string/tap_to_enter_room_url"
+                    android:inputType="textUri"
+                    android:maxLines="1"
+                    android:textColorHint="#546E7A"
+                    android:textSize="18sp" />
+
+                <Button
+                    android:id="@+id/call_button"
+                    style="?android:attr/buttonBarButtonStyle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="match_parent"
+                    app:layout_constraintStart_toEndOf="@id/aurl"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintTop_toTopOf="parent"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    android:minWidth="72dp"
+                    android:enabled="false"
+                    android:text="@string/call_button"
+                    android:visibility="visible" />
+
+            </androidx.constraintlayout.widget.ConstraintLayout>
 
         </androidx.constraintlayout.widget.ConstraintLayout>
 
-    </androidx.constraintlayout.widget.ConstraintLayout>
+        <!--
+            Overlay to intercept taps - when this view is tapped, we show the buttons.
+            This must be on top of the buttons to reset the timer if the buttons are
+            pressed.
+        -->
 
-    <!--
-        Overlay to intercept taps - when this view is tapped, we show the buttons.
-        This must be on top of the buttons to reset the timer if the buttons are
-        pressed.
-    -->
+        <View
+            android:id="@+id/background_tap_interceptor"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
 
-    <View
-        android:id="@+id/background_tap_interceptor"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent" />
+        <!--
+            Local video preview overlay: use layout weights and Space to make it
+            scale up with the screen size (and match the aspect ratio)
+        -->
 
-    <!--
-        Local video preview overlay: use layout weights and Space to make it
-        scale up with the screen size (and match the aspect ratio)
-    -->
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
 
-    <androidx.constraintlayout.widget.ConstraintLayout
-        android:layout_width="match_parent"
-        android:layout_height="match_parent">
+            <FrameLayout
+                android:id="@+id/local_video_view_container"
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:layout_margin="10dp"
+                android:elevation="10dp"
+                android:outlineProvider="bounds"
+                app:layout_constraintHorizontal_weight="1"
+                app:layout_constraintVertical_weight="1"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toStartOf="@id/local_video_hspace"
+                app:layout_constraintBottom_toTopOf="@id/local_video_vspace">
 
-        <FrameLayout
-            android:id="@+id/local_video_view_container"
-            android:layout_width="0dp"
-            android:layout_height="0dp"
-            android:layout_margin="10dp"
-            android:elevation="10dp"
-            android:outlineProvider="bounds"
-            app:layout_constraintHorizontal_weight="1"
-            app:layout_constraintVertical_weight="1"
+                <TextView
+                    android:id="@+id/local_camera_mask_view"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:background="@color/colorLocalCameraDisabled"
+                    android:gravity="center|center_vertical"
+                    android:text="@string/local_camera"
+                    android:visibility="visible" />
+
+            </FrameLayout>
+
+            <Space
+                android:id="@+id/local_video_hspace"
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintBottom_toBottomOf="@id/local_video_view_container"
+                app:layout_constraintStart_toEndOf="@id/local_video_view_container"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintHorizontal_weight="2" />
+
+            <Space
+                android:id="@+id/local_video_vspace"
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                app:layout_constraintTop_toBottomOf="@id/local_video_view_container"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toEndOf="@id/local_video_view_container"
+                app:layout_constraintVertical_weight="2" />
+
+        </androidx.constraintlayout.widget.ConstraintLayout>
+
+        <!--
+            Button to show/hide the local video view.
+        -->
+
+        <androidx.appcompat.widget.AppCompatToggleButton
+            android:id="@+id/local_video_toggle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_margin="5dp"
             app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toStartOf="@id/local_video_hspace"
-            app:layout_constraintBottom_toTopOf="@id/local_video_vspace">
-
-            <TextView
-                android:id="@+id/local_camera_mask_view"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:background="@color/colorLocalCameraDisabled"
-                android:gravity="center|center_vertical"
-                android:text="@string/local_camera"
-                android:visibility="visible" />
-
-        </FrameLayout>
-
-        <Space
-            android:id="@+id/local_video_hspace"
-            android:layout_width="0dp"
-            android:layout_height="0dp"
-            app:layout_constraintTop_toTopOf="parent"
-            app:layout_constraintBottom_toBottomOf="@id/local_video_view_container"
-            app:layout_constraintStart_toEndOf="@id/local_video_view_container"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintHorizontal_weight="2" />
-
-        <Space
-            android:id="@+id/local_video_vspace"
-            android:layout_width="0dp"
-            android:layout_height="0dp"
-            app:layout_constraintTop_toBottomOf="@id/local_video_view_container"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="@id/local_video_view_container"
-            app:layout_constraintVertical_weight="2" />
+            android:background="@drawable/local_video_toggle"
+            android:drawableStart="@drawable/toggle_button_plusminus_icon"
+            android:padding="2dp"
+            android:checked="true"
+            android:textOn="@null"
+            android:textOff="@null"
+            android:text="@null"
+            android:minWidth="0dp"
+            android:minHeight="0dp" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 
-    <!--
-        Button to show/hide the local video view.
-    -->
-
-    <androidx.appcompat.widget.AppCompatToggleButton
-        android:id="@+id/local_video_toggle"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_margin="5dp"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        android:background="@drawable/local_video_toggle"
-        android:drawableStart="@drawable/toggle_button_plusminus_icon"
-        android:padding="2dp"
-        android:checked="true"
-        android:textOn="@null"
-        android:textOff="@null"
-        android:text="@null"
-        android:minWidth="0dp"
-        android:minHeight="0dp" />
-
-</androidx.constraintlayout.widget.ConstraintLayout>
+</FrameLayout>
