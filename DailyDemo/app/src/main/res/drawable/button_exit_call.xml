@@ -3,13 +3,7 @@
 
     <item
         android:state_enabled="true"
-        android:state_checked="true"
-        android:drawable="@drawable/microphone" />
-
-    <item
-        android:state_enabled="true"
-        android:state_checked="false"
-        android:drawable="@drawable/microphone_off" />
+        android:drawable="@drawable/exit_call" />
 
     <item
         android:state_enabled="false"

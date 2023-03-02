@@ -2,11 +2,17 @@
 <selector xmlns:android="http://schemas.android.com/apk/res/android">
 
     <item
+        android:state_enabled="true"
         android:state_checked="true"
         android:drawable="@drawable/video" />
 
     <item
+        android:state_enabled="true"
         android:state_checked="false"
         android:drawable="@drawable/video_off" />
+
+    <item
+        android:state_enabled="false"
+        android:drawable="@drawable/dots_circle" />
 
 </selector>

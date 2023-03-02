@@ -31,7 +31,10 @@ import android.widget.Toast
 import android.widget.ToggleButton
 import androidx.activity.result.contract.ActivityResultContracts.RequestMultiplePermissions
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.widget.LinearLayoutCompat
 import androidx.core.content.ContextCompat
+import co.daily.core.dailydemo.chat.ChatActivity
+import co.daily.core.dailydemo.chat.ChatProtocol
 import co.daily.core.dailydemo.remotevideochooser.RemoteVideoChooser
 import co.daily.core.dailydemo.remotevideochooser.RemoteVideoChooserAuto
 import co.daily.core.dailydemo.remotevideochooser.RemoteVideoChooserHide
@@ -40,6 +43,8 @@ import co.daily.core.dailydemo.services.DemoActiveCallService
 import co.daily.core.dailydemo.services.DemoCallService
 import co.daily.model.CallState
 import co.daily.model.MediaDeviceInfo
+import co.daily.model.MeetingToken
+import co.daily.model.RequestListener
 import co.daily.view.VideoView
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 
@@ -80,6 +85,9 @@ class MainActivity : AppCompatActivity(), DemoStateListener {
     private lateinit var layoutCall: View
 
     private lateinit var addurl: EditText
+    private lateinit var meetingTokenInput: EditText
+    private lateinit var usernameInput: EditText
+
     private lateinit var localContainer: FrameLayout
     private lateinit var remoteContainer: FrameLayout
     private var localVideoView: VideoView? = null
@@ -97,6 +105,7 @@ class MainActivity : AppCompatActivity(), DemoStateListener {
 
     private lateinit var micInputButton: ToggleButton
     private lateinit var camInputButton: ToggleButton
+    private lateinit var camInputFlipButton: Button
     private lateinit var micPublishButton: ToggleButton
     private lateinit var camPublishButton: ToggleButton
     private lateinit var audioDevicesSpinner: Spinner
@@ -105,6 +114,8 @@ class MainActivity : AppCompatActivity(), DemoStateListener {
 
     private lateinit var localCameraMaskView: TextView
     private lateinit var remoteCameraMaskView: TextView
+
+    private lateinit var recentChatMessages: LinearLayoutCompat
 
     private var buttonHidingEnabled = false
     private val buttonHidingRunnable: Runnable = Runnable {
@@ -269,6 +280,7 @@ class MainActivity : AppCompatActivity(), DemoStateListener {
 
         micInputButton = findViewById(R.id.input_mic_button)
         camInputButton = findViewById(R.id.input_camera_button)
+        camInputFlipButton = findViewById(R.id.input_camera_button_flip)
         micPublishButton = findViewById(R.id.publish_mic_button)
         camPublishButton = findViewById(R.id.publish_camera_button)
 
@@ -278,10 +290,19 @@ class MainActivity : AppCompatActivity(), DemoStateListener {
         localCameraMaskView = findViewById(R.id.local_camera_mask_view)
         remoteCameraMaskView = findViewById(R.id.remote_camera_mask_view)
 
+        recentChatMessages = findViewById(R.id.recent_chat_messages)
+
         addurl = findViewById(R.id.aurl)
+        meetingTokenInput = findViewById(R.id.meeting_token_input)
+        usernameInput = findViewById(R.id.username_input)
+
         prefs.lastUrl?.apply {
             addurl.setText(this)
             updateJoinButtonState()
+        }
+
+        prefs.lastUsername?.apply {
+            usernameInput.setText(this)
         }
 
         localVideoToggle = findViewById(R.id.local_video_toggle)
@@ -303,6 +324,14 @@ class MainActivity : AppCompatActivity(), DemoStateListener {
                 when (it.itemId) {
                     R.id.call_option_change_remote_participant -> {
                         showMenuChangeRemoteVideo()
+                    }
+
+                    R.id.call_option_developer_options -> {
+                        callService?.showDeveloperOptionsDialog(this)
+                    }
+
+                    R.id.call_option_chat -> {
+                        startActivity(Intent(this@MainActivity, ChatActivity::class.java))
                     }
 
                     else -> {
@@ -442,25 +471,59 @@ class MainActivity : AppCompatActivity(), DemoStateListener {
         })
 
         joinButton.setOnClickListener {
-            // Only enable leave after joined
             joinButton.isEnabled = false
             addurl.isEnabled = false
+            meetingTokenInput.isEnabled = false
+            usernameInput.isEnabled = false
             val url = addurl.text.toString()
+            val username = usernameInput.text?.toString()?.takeUnless { it.isEmpty() }
+
             prefs.lastUrl = url
+            prefs.lastUsername = username
 
-            callService!!.join(url)
-            callService!!.setUsername("Android User")
+            val token = meetingTokenInput.text?.toString()?.takeUnless {
+                it.isEmpty()
+            }?.run { MeetingToken(this) }
+
+            callService!!.join(url, token)
+            callService!!.setUsername(username ?: "Android User")
         }
 
-        leaveButton.setOnClickListener {
-            inCallButtons.visibility = View.GONE
-            callService!!.leave()
+        fun setButtonListenerWithDisable(button: View, action: (RequestListener) -> Unit) {
+            button.setOnClickListener {
+                button.isEnabled = false
+                action {
+                    button.isEnabled = true
+                }
+            }
         }
 
-        micInputButton.setOnClickListener { callService?.toggleMicInput(micInputButton.isChecked) }
-        camInputButton.setOnClickListener { callService?.toggleCamInput(camInputButton.isChecked) }
-        micPublishButton.setOnClickListener { callService?.toggleMicPublishing(micPublishButton.isChecked) }
-        camPublishButton.setOnClickListener { callService?.toggleCamPublishing(camPublishButton.isChecked) }
+        setButtonListenerWithDisable(leaveButton) { listener ->
+            callService!!.leave { result ->
+                listener.onRequestResult(result)
+                inCallButtons.visibility = View.GONE
+            }
+        }
+
+        setButtonListenerWithDisable(micInputButton) {
+            callService?.toggleMicInput(micInputButton.isChecked, it)
+        }
+
+        setButtonListenerWithDisable(camInputButton) {
+            callService?.toggleCamInput(camInputButton.isChecked, it)
+        }
+
+        setButtonListenerWithDisable(camInputFlipButton) {
+            callService?.flipCameraDirection(it)
+        }
+
+        setButtonListenerWithDisable(micPublishButton) {
+            callService?.toggleMicPublishing(micPublishButton.isChecked, it)
+        }
+
+        setButtonListenerWithDisable(camPublishButton) {
+            callService?.toggleCamPublishing(camPublishButton.isChecked, it)
+        }
     }
 
     private fun populateSpinnerWithAvailableAudioDevices(audioDevices: List<MediaDeviceInfo>) {
@@ -541,6 +604,8 @@ class MainActivity : AppCompatActivity(), DemoStateListener {
                 inCallButtons.visibility = View.GONE
                 urlBar.visibility = View.VISIBLE
                 addurl.isEnabled = true
+                meetingTokenInput.isEnabled = true
+                usernameInput.isEnabled = true
                 disableButtonHiding()
 
                 if (!userToggledLocalPreview) {
@@ -549,10 +614,17 @@ class MainActivity : AppCompatActivity(), DemoStateListener {
 
                 triggeredForegroundService = false
             }
-            CallState.joining, CallState.leaving -> {
+            CallState.joining -> {
                 inCallButtons.visibility = View.GONE
                 urlBar.visibility = View.VISIBLE
                 addurl.isEnabled = false
+                meetingTokenInput.isEnabled = false
+                usernameInput.isEnabled = false
+                disableButtonHiding()
+            }
+            CallState.leaving -> {
+                inCallButtons.visibility = View.VISIBLE
+                urlBar.visibility = View.GONE
                 disableButtonHiding()
             }
             CallState.joined -> {
@@ -580,6 +652,24 @@ class MainActivity : AppCompatActivity(), DemoStateListener {
     override fun onError(msg: String) {
         Log.e(TAG, "Got error: $msg")
         showMessage(msg)
+    }
+
+    override fun onChatRemoteMessageReceived(chatMessage: ChatProtocol.ChatMessage) {
+        val view = layoutInflater.inflate(R.layout.chat_message_popup, recentChatMessages, false)
+
+        view.findViewById<TextView>(R.id.chat_message_author).text = chatMessage.name
+        view.findViewById<TextView>(R.id.chat_message_content).text = chatMessage.message
+
+        view.setOnClickListener {
+            startActivity(Intent(this@MainActivity, ChatActivity::class.java))
+        }
+
+        recentChatMessages.addView(view)
+
+        // Hide the popup after 5 seconds
+        Utils.UI_THREAD_HANDLER.postDelayed({
+            recentChatMessages.removeView(view)
+        }, 5000)
     }
 
     override fun onBackPressed() {

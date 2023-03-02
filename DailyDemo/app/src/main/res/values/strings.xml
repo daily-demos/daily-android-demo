@@ -3,12 +3,12 @@
     <string name="active_call_buttons">Call</string>
     <string name="call_button">Join</string>
     <string name="hangup_button">Leave</string>
-    <string name="tap_to_enter_room_url">tap to enter room url</string>
     <string name="inputs">Inputs</string>
     <string name="publish">Publishing</string>
     <string name="publish_camera">Publish Camera</string>
     <string name="publish_mic">Publish Mic</string>
     <string name="input_camera">Input Camera</string>
+    <string name="switch_camera">Switch Camera</string>
     <string name="input_mic">Input Mic</string>
     <string name="local_camera">Local Camera</string>
     <string name="audio_route">Audio</string>
@@ -28,4 +28,17 @@
     <string name="username_with_screen_share">%s (screen)</string>
     <string name="remote_video_hide">Hide</string>
     <string name="remote_video_active_speaker">Active Speaker</string>
+
+    <string name="call_option_developer_options">Developer options…</string>
+    <string name="call_option_developer_options_title">Developer options</string>
+
+    <string name="close_dialog">Close</string>
+
+    <string name="room_url_prompt">Room URL</string>
+    <string name="meeting_token_prompt">Meeting token (optional)</string>
+    <string name="username_prompt">Username (optional)</string>
+
+    <string name="chat_send_hint">Send a message…</string>
+    <string name="chat_send_button">Send</string>
+    <string name="call_option_chat">Chat…</string>
 </resources>
