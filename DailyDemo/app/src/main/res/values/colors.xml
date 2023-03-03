@@ -11,4 +11,18 @@
     <color name="colorToggleCheckedPressed">#6cb3ff</color>
     <color name="colorToggleUnchecked">#ff0000</color>
     <color name="colorToggleUncheckedPressed">#FF6161</color>
+    <color name="colorToggleDisabled">#CCCCCC</color>
+
+    <!-- Daily colors -->
+    <color name="daily_blue_dark">#121a24</color>
+    <color name="daily_blue">#1f2d3d</color>
+    <color name="daily_blue_light">#2b3f56</color>
+    <color name="daily_gray_dark">#7b848f</color>
+    <color name="daily_gray">#c8d1dc</color>
+    <color name="daily_gray_light">#e6eaef</color>
+    <color name="daily_gray_lightest">#f7f9fa</color>
+    <color name="daily_orange_dark">#fb651e</color>
+    <color name="daily_orange">#ff9254</color>
+    <color name="daily_teal_dark">#00a981</color>
+    <color name="daily_teal">#1bebb9</color>
 </resources>

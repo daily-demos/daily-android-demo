@@ -1,5 +1,6 @@
 package co.daily.core.dailydemo.services
 
+import android.app.Activity
 import android.app.Service
 import android.content.Context
 import android.content.Intent
@@ -8,20 +9,31 @@ import co.daily.CallClient
 import co.daily.CallClientListener
 import co.daily.core.dailydemo.DemoState
 import co.daily.core.dailydemo.DemoStateListener
+import co.daily.core.dailydemo.DeveloperOptionsDialog
 import co.daily.core.dailydemo.VideoTrackType
+import co.daily.core.dailydemo.chat.ChatProtocol
 import co.daily.core.dailydemo.remotevideochooser.RemoteVideoChooser
 import co.daily.core.dailydemo.remotevideochooser.RemoteVideoChooserAuto
 import co.daily.model.AvailableDevices
 import co.daily.model.CallState
 import co.daily.model.MediaDeviceInfo
+import co.daily.model.MeetingToken
+import co.daily.model.NetworkStats
+import co.daily.model.OutboundMediaType
 import co.daily.model.Participant
+import co.daily.model.ParticipantCounts
 import co.daily.model.ParticipantId
 import co.daily.model.ParticipantLeftReason
+import co.daily.model.Recipient
+import co.daily.model.RequestListener
+import co.daily.model.recording.RecordingStatus
+import co.daily.model.streaming.StreamId
+import co.daily.model.streaming.StreamingLayout
 import co.daily.settings.BitRate
+import co.daily.settings.CameraInputSettingsUpdate
 import co.daily.settings.CameraPublishingSettingsUpdate
 import co.daily.settings.ClientSettingsUpdate
-import co.daily.settings.Disable
-import co.daily.settings.Enable
+import co.daily.settings.FacingModeUpdate
 import co.daily.settings.FrameRate
 import co.daily.settings.InputSettings
 import co.daily.settings.InputSettingsUpdate
@@ -31,6 +43,7 @@ import co.daily.settings.Scale
 import co.daily.settings.VideoEncodingSettingsUpdate
 import co.daily.settings.VideoEncodingsSettingsUpdate
 import co.daily.settings.VideoMaxQualityUpdate
+import co.daily.settings.VideoMediaTrackSettingsUpdate
 import co.daily.settings.VideoSendSettingsUpdate
 import co.daily.settings.subscription.Subscribed
 import co.daily.settings.subscription.SubscriptionProfile
@@ -42,13 +55,15 @@ import co.daily.settings.subscription.Unsubscribed
 import co.daily.settings.subscription.VideoReceiveSettingsUpdate
 import co.daily.settings.subscription.VideoSubscriptionSettingsUpdate
 import co.daily.settings.subscription.base
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import java.util.concurrent.CopyOnWriteArrayList
 
 private const val TAG = "CallService"
 
 private const val ACTION_LEAVE = "action_leave"
 
-class DemoCallService : Service() {
+class DemoCallService : Service(), ChatProtocol.ChatProtocolListener {
 
     private val profileActiveCamera = SubscriptionProfile("activeCamera")
     private val profileActiveScreenShare = SubscriptionProfile("activeScreenShare")
@@ -57,7 +72,25 @@ class DemoCallService : Service() {
 
     private var state: DemoState = DemoState.default()
 
+    private var cameraDirection = FacingModeUpdate.user
+
+    private var callClient: CallClient? = null
+
+    private val chatProtocol = ChatProtocol(
+        this,
+        object : ChatProtocol.ChatProtocolHelper {
+            override fun sendAppMessage(msg: ChatProtocol.AppMessage, recipient: Recipient) {
+                callClient?.sendAppMessage(Json.encodeToString(msg), recipient)
+            }
+
+            override fun participants() = callClient?.participants()
+        }
+    )
+
     inner class Binder : android.os.Binder() {
+
+        val chatMessages
+            get() = chatProtocol.messages
 
         fun addListener(listener: DemoStateListener) {
             listeners.add(listener)
@@ -68,65 +101,68 @@ class DemoCallService : Service() {
             listeners.remove(listener)
         }
 
-        fun join(url: String) {
+        fun join(url: String, token: MeetingToken?) {
             updateServiceState {
                 it.with(
                     newRemoteVideoChooser = RemoteVideoChooserAuto
                 )
             }
-            callClient?.join(url, null, createClientSettings()) {
+            callClient?.join(url, token, createClientSettings()) {
                 it.error?.apply {
                     Log.e(TAG, "Got error while joining call: $msg")
                     listeners.forEach { it.onError("Failed to join call: $msg") }
                 }
                 it.success?.apply {
-                    Log.i(TAG, "Successfully joined call in ${meetingSession.topology} mode")
+                    Log.i(TAG, "Successfully joined call")
                 }
             }
         }
 
-        fun leave() {
-            callClient?.leave()
+        fun leave(listener: RequestListener) {
+            callClient?.leave(listener)
         }
 
         fun setUsername(username: String) {
             callClient?.setUserName(username)
         }
 
-        fun toggleMicInput(enabled: Boolean) {
+        fun flipCameraDirection(listener: RequestListener) {
+
+            cameraDirection = when (cameraDirection) {
+                FacingModeUpdate.user -> FacingModeUpdate.environment
+                FacingModeUpdate.environment -> FacingModeUpdate.user
+            }
+
+            callClient?.updateInputs(
+                InputSettingsUpdate(
+                    camera = CameraInputSettingsUpdate(
+                        settings = VideoMediaTrackSettingsUpdate(
+                            facingMode = cameraDirection
+                        )
+                    )
+                ),
+                listener
+            )
+        }
+
+        fun toggleMicInput(enabled: Boolean, listener: RequestListener) {
             Log.d(TAG, "toggleMicInput $enabled")
-            callClient?.updateInputs(
-                InputSettingsUpdate(
-                    microphone = if (enabled) Enable() else Disable()
-                )
-            )
+            callClient?.setInputEnabled(OutboundMediaType.Microphone, enabled, listener)
         }
 
-        fun toggleCamInput(enabled: Boolean) {
+        fun toggleCamInput(enabled: Boolean, listener: RequestListener) {
             Log.d(TAG, "toggleCamInput $enabled")
-            callClient?.updateInputs(
-                InputSettingsUpdate(
-                    camera = if (enabled) Enable() else Disable()
-                )
-            )
+            callClient?.setInputEnabled(OutboundMediaType.Camera, enabled, listener)
         }
 
-        fun toggleMicPublishing(enabled: Boolean) {
+        fun toggleMicPublishing(enabled: Boolean, listener: RequestListener) {
             Log.d(TAG, "toggleMicPublishing $enabled")
-            callClient?.updatePublishing(
-                PublishingSettingsUpdate(
-                    microphone = if (enabled) Enable() else Disable()
-                )
-            )
+            callClient?.setIsPublishing(OutboundMediaType.Microphone, enabled, listener)
         }
 
-        fun toggleCamPublishing(enabled: Boolean) {
+        fun toggleCamPublishing(enabled: Boolean, listener: RequestListener) {
             Log.d(TAG, "toggleCamPublishing $enabled")
-            callClient?.updatePublishing(
-                PublishingSettingsUpdate(
-                    camera = if (enabled) Enable() else Disable()
-                )
-            )
+            callClient?.setIsPublishing(OutboundMediaType.Camera, enabled, listener)
         }
 
         fun setRemoteVideoChooser(remoteVideoChooser: RemoteVideoChooser) {
@@ -141,6 +177,14 @@ class DemoCallService : Service() {
                 callClient?.setAudioDevice(device.deviceId)
                 updateServiceState { it.with(newActiveAudioDevice = device.deviceId) }
             }
+        }
+
+        fun showDeveloperOptionsDialog(activity: Activity) {
+            DeveloperOptionsDialog.show(activity, callClient!!)
+        }
+
+        fun sendChatMessage(msg: String) {
+            chatProtocol.sendMessage(msg)
         }
     }
 
@@ -172,10 +216,10 @@ class DemoCallService : Service() {
                 addListener(callClientListener)
                 setupParticipantSubscriptionProfiles(this)
 
-                updateInputs(
-                    inputSettings = InputSettingsUpdate(
-                        microphone = Enable(),
-                        camera = Enable()
+                setInputsEnabled(
+                    mapOf(
+                        OutboundMediaType.Camera to true,
+                        OutboundMediaType.Microphone to true
                     )
                 )
 
@@ -204,12 +248,14 @@ class DemoCallService : Service() {
             }
     }
 
-    private var callClient: CallClient? = null
-
     private val callClientListener = object : CallClientListener {
         override fun onCallStateUpdated(state: CallState) {
             Log.i(TAG, "onCallStateUpdated($state)")
+
             updateServiceState { it.with(newStatus = state) }
+
+            chatProtocol.onCallStateUpdated(state)
+
             if (state == CallState.joined) {
                 updateRemoteVideoChoice()
             }
@@ -294,6 +340,50 @@ class DemoCallService : Service() {
 
         override fun onAppMessage(message: String, from: ParticipantId) {
             Log.i(TAG, "onAppMessage($message, $from)")
+            chatProtocol.onAppMessageReceived(message, from)
+        }
+
+        override fun onParticipantCountsUpdated(newParticipantCounts: ParticipantCounts) {
+            Log.i(TAG, "onParticipantCountsUpdated($newParticipantCounts)")
+        }
+
+        override fun onNetworkStatsUpdated(newNetworkStatistics: NetworkStats) {
+            Log.i(TAG, "onNetworkStatsUpdated($newNetworkStatistics)")
+        }
+
+        override fun onRecordingStarted(recordingStatus: RecordingStatus) {
+            Log.i(TAG, "onRecordingStarted($recordingStatus)")
+        }
+
+        override fun onRecordingStopped(streamId: StreamId) {
+            Log.i(TAG, "onRecordingStopped($streamId)")
+        }
+
+        override fun onRecordingError(streamId: StreamId, error: String) {
+            Log.i(TAG, "onRecordingError($streamId, $error)")
+            listeners.forEach { it.onError("Recording error: $error") }
+        }
+
+        override fun onLiveStreamStarted(
+            streamId: StreamId,
+            startedBy: ParticipantId,
+            layout: StreamingLayout?
+        ) {
+            Log.i(TAG, "onLiveStreamStarted($streamId, $startedBy, $layout)")
+        }
+
+        override fun onLiveStreamStopped(streamId: StreamId) {
+            Log.i(TAG, "onLiveStreamStopped($streamId)")
+        }
+
+        override fun onLiveStreamError(streamId: StreamId, error: String) {
+            Log.i(TAG, "onLiveStreamError($streamId, $error)")
+            listeners.forEach { it.onError("Live stream error: $error") }
+        }
+
+        override fun onLiveStreamWarning(streamId: StreamId, msg: String) {
+            Log.i(TAG, "onLiveStreamWarning($streamId, $msg)")
+            listeners.forEach { it.onError("Live stream warning: $msg") }
         }
     }
 
@@ -426,5 +516,13 @@ class DemoCallService : Service() {
                 )
             )
         )
+    }
+
+    override fun onMessageListUpdated() {
+        listeners.forEach { it.onChatMessageListUpdated() }
+    }
+
+    override fun onRemoteMessageReceived(chatMessage: ChatProtocol.ChatMessage) {
+        listeners.forEach { it.onChatRemoteMessageReceived(chatMessage) }
     }
 }

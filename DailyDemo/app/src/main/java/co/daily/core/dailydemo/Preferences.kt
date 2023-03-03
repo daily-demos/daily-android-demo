@@ -6,6 +6,7 @@ class Preferences constructor(ctx: Context) {
 
     companion object {
         private val LAST_URL = "pref_last_url"
+        private val LAST_USERNAME = "pref_last_username"
     }
 
     private val prefs = ctx.applicationContext.getSharedPreferences("prefs", Context.MODE_PRIVATE)
@@ -21,4 +22,8 @@ class Preferences constructor(ctx: Context) {
     var lastUrl: String?
         get() = getString(LAST_URL)
         set(value) = setString(LAST_URL, value)
+
+    var lastUsername: String?
+        get() = getString(LAST_USERNAME)
+        set(value) = setString(LAST_USERNAME, value)
 }

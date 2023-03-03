@@ -128,6 +128,19 @@
                             android:minHeight="0dp"
                             android:contentDescription="@string/input_camera" />
 
+                        <androidx.appcompat.widget.AppCompatButton
+                            android:id="@+id/input_camera_button_flip"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:backgroundTint="@color/normal_button"
+                            android:drawableStart="@drawable/button_flip_video"
+                            android:textOn="@null"
+                            android:textOff="@null"
+                            android:text="@null"
+                            android:minWidth="0dp"
+                            android:minHeight="0dp"
+                            android:contentDescription="@string/switch_camera" />
+
                     </androidx.appcompat.widget.LinearLayoutCompat>
 
                 </androidx.constraintlayout.widget.ConstraintLayout>
@@ -228,7 +241,7 @@
                             android:id="@+id/more_options_button"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:backgroundTint="@color/colorToolbarButton"
+                            android:backgroundTint="@color/white_background_button"
                             android:contentDescription="@string/more_options"
                             app:srcCompat="@drawable/dots_vertical" />
 
@@ -236,9 +249,9 @@
                             android:id="@+id/hangup_button"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:backgroundTint="@color/colorToolbarButton"
+                            android:backgroundTint="@color/white_background_button"
                             android:contentDescription="@string/hangup_button"
-                            app:srcCompat="@drawable/exit_call" />
+                            app:srcCompat="@drawable/button_exit_call" />
 
                     </androidx.appcompat.widget.LinearLayoutCompat>
 
@@ -305,12 +318,39 @@
                     app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintEnd_toStartOf="@id/call_button"
                     app:layout_constraintTop_toTopOf="parent"
-                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintBottom_toTopOf="@id/meeting_token_input"
                     android:autofillHints=""
-                    android:hint="@string/tap_to_enter_room_url"
+                    android:hint="@string/room_url_prompt"
                     android:inputType="textUri"
                     android:maxLines="1"
-                    android:textColorHint="#546E7A"
+                    android:textSize="18sp" />
+
+                <EditText
+                    android:id="@+id/meeting_token_input"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintEnd_toStartOf="@id/call_button"
+                    app:layout_constraintTop_toBottomOf="@id/aurl"
+                    app:layout_constraintBottom_toTopOf="@id/username_input"
+                    android:autofillHints=""
+                    android:hint="@string/meeting_token_prompt"
+                    android:inputType="textVisiblePassword"
+                    android:maxLines="1"
+                    android:textSize="18sp" />
+
+                <EditText
+                    android:id="@+id/username_input"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintEnd_toStartOf="@id/call_button"
+                    app:layout_constraintTop_toBottomOf="@id/meeting_token_input"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    android:autofillHints="name"
+                    android:hint="@string/username_prompt"
+                    android:inputType="textPersonName"
+                    android:maxLines="1"
                     android:textSize="18sp" />
 
                 <Button
@@ -420,5 +460,16 @@
             android:minHeight="0dp" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>
+
+    <!--
+        Recent chat messages
+    -->
+    <androidx.appcompat.widget.LinearLayoutCompat
+        android:id="@+id/recent_chat_messages"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:animateLayoutChanges="true"
+        android:paddingTop="32dp"
+        android:orientation="vertical" />
 
 </FrameLayout>

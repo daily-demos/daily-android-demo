@@ -116,10 +116,6 @@ class DemoActiveCallService : Service(), DemoStateListener {
         }
     }
 
-    override fun onError(msg: String) {
-        // Nothing to do here
-    }
-
     override fun onDestroy() {
         super.onDestroy()
         callService?.removeListener(this)
