@@ -26,9 +26,9 @@ import co.daily.model.ParticipantId
 import co.daily.model.ParticipantLeftReason
 import co.daily.model.Recipient
 import co.daily.model.RequestListener
+import co.daily.model.livestream.LiveStreamStatus
 import co.daily.model.recording.RecordingStatus
 import co.daily.model.streaming.StreamId
-import co.daily.model.streaming.StreamingLayout
 import co.daily.settings.BitRate
 import co.daily.settings.CameraInputSettingsUpdate
 import co.daily.settings.CameraPublishingSettingsUpdate
@@ -351,39 +351,35 @@ class DemoCallService : Service(), ChatProtocol.ChatProtocolListener {
             Log.i(TAG, "onNetworkStatsUpdated($newNetworkStatistics)")
         }
 
-        override fun onRecordingStarted(recordingStatus: RecordingStatus) {
-            Log.i(TAG, "onRecordingStarted($recordingStatus)")
+        override fun onRecordingStarted(status: RecordingStatus) {
+            Log.i(TAG, "onRecordingStarted($status)")
         }
 
         override fun onRecordingStopped(streamId: StreamId) {
             Log.i(TAG, "onRecordingStopped($streamId)")
         }
 
-        override fun onRecordingError(streamId: StreamId, error: String) {
-            Log.i(TAG, "onRecordingError($streamId, $error)")
-            listeners.forEach { it.onError("Recording error: $error") }
+        override fun onRecordingError(streamId: StreamId, message: String) {
+            Log.i(TAG, "onRecordingError($streamId, $message)")
+            listeners.forEach { it.onError("Recording error: $message") }
         }
 
-        override fun onLiveStreamStarted(
-            streamId: StreamId,
-            startedBy: ParticipantId,
-            layout: StreamingLayout?
-        ) {
-            Log.i(TAG, "onLiveStreamStarted($streamId, $startedBy, $layout)")
+        override fun onLiveStreamStarted(status: LiveStreamStatus) {
+            Log.i(TAG, "onLiveStreamStarted($status)")
         }
 
         override fun onLiveStreamStopped(streamId: StreamId) {
             Log.i(TAG, "onLiveStreamStopped($streamId)")
         }
 
-        override fun onLiveStreamError(streamId: StreamId, error: String) {
-            Log.i(TAG, "onLiveStreamError($streamId, $error)")
-            listeners.forEach { it.onError("Live stream error: $error") }
+        override fun onLiveStreamError(streamId: StreamId, message: String) {
+            Log.i(TAG, "onLiveStreamError($streamId, $message)")
+            listeners.forEach { it.onError("Live stream error: $message") }
         }
 
-        override fun onLiveStreamWarning(streamId: StreamId, msg: String) {
-            Log.i(TAG, "onLiveStreamWarning($streamId, $msg)")
-            listeners.forEach { it.onError("Live stream warning: $msg") }
+        override fun onLiveStreamWarning(streamId: StreamId, message: String) {
+            Log.i(TAG, "onLiveStreamWarning($streamId, $message)")
+            listeners.forEach { it.onError("Live stream warning: $message") }
         }
     }
 
