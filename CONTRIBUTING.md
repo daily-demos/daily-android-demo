@@ -4,7 +4,7 @@ Thank you for looking into contributing to `daily-demos`! We want this repo to h
 
 **Before contributing:**
 
-- [Run daily-demos locally](#run-daily-demos-locally)
+- [Run daily-demos locally](#run-the-demo-locally)
 - [Read our code of conduct](#read-our-code-of-conduct)
 
 **How to contribute:**
@@ -15,7 +15,7 @@ Thank you for looking into contributing to `daily-demos`! We want this repo to h
 
 ## Before contributing
 
-### Try to run the demo locally
+### Run the demo locally
 
 Please follow the instructions in `README.md`.
 
@@ -33,12 +33,9 @@ Today we work off two main issue templates: _bug reports_ and _demo/feature requ
 
 _Bug reports_
 
-Before creating a new bug report, please do two things:
+Before creating a new bug report, please check to see if somebody else has [already reported the issue](https://github.com/daily-demos/daily-java-demo/issues).
 
-1. If you want to report a bug you experienced while on a Daily call, try out these [troubleshooting tips](https://help.daily.co/en/articles/2303117-top-troubleshooting-tips) to see if that takes care of the bug.
-2. If you're still seeing the error, check to see if somebody else has [already filed the issue](https://github.com/daily-demos/daily-android-demo/issues) before creating a new one.
-
-If you've done those two things and need to create an issue, we'll ask you to tell us:
+If you create an issue, we'll ask you to tell us:
 
 - What you expected to happen
 - What actually happened
