@@ -19,7 +19,6 @@ import co.daily.model.CallState
 import co.daily.model.MediaDeviceInfo
 import co.daily.model.MeetingToken
 import co.daily.model.NetworkStats
-import co.daily.model.OutboundMediaType
 import co.daily.model.Participant
 import co.daily.model.ParticipantCounts
 import co.daily.model.ParticipantId
@@ -147,22 +146,22 @@ class DemoCallService : Service(), ChatProtocol.ChatProtocolListener {
 
         fun toggleMicInput(enabled: Boolean, listener: RequestListener) {
             Log.d(TAG, "toggleMicInput $enabled")
-            callClient?.setInputEnabled(OutboundMediaType.Microphone, enabled, listener)
+            callClient?.setInputsEnabled(microphone = enabled, listener = listener)
         }
 
         fun toggleCamInput(enabled: Boolean, listener: RequestListener) {
             Log.d(TAG, "toggleCamInput $enabled")
-            callClient?.setInputEnabled(OutboundMediaType.Camera, enabled, listener)
+            callClient?.setInputsEnabled(camera = enabled, listener = listener)
         }
 
         fun toggleMicPublishing(enabled: Boolean, listener: RequestListener) {
             Log.d(TAG, "toggleMicPublishing $enabled")
-            callClient?.setIsPublishing(OutboundMediaType.Microphone, enabled, listener)
+            callClient?.setIsPublishing(microphone = enabled, listener = listener)
         }
 
         fun toggleCamPublishing(enabled: Boolean, listener: RequestListener) {
             Log.d(TAG, "toggleCamPublishing $enabled")
-            callClient?.setIsPublishing(OutboundMediaType.Camera, enabled, listener)
+            callClient?.setIsPublishing(camera = enabled, listener = listener)
         }
 
         fun setRemoteVideoChooser(remoteVideoChooser: RemoteVideoChooser) {
@@ -216,12 +215,7 @@ class DemoCallService : Service(), ChatProtocol.ChatProtocolListener {
                 addListener(callClientListener)
                 setupParticipantSubscriptionProfiles(this)
 
-                setInputsEnabled(
-                    mapOf(
-                        OutboundMediaType.Camera to true,
-                        OutboundMediaType.Microphone to true
-                    )
-                )
+                setInputsEnabled(camera = true, microphone = true)
 
                 updateServiceState { it.with(newAllParticipants = participants().all) }
                 state.allParticipants.values.firstOrNull { it.info.isLocal }?.apply {

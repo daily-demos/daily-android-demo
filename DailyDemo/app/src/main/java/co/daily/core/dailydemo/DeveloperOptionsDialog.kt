@@ -12,7 +12,7 @@ import android.widget.TextView
 import androidx.appcompat.widget.LinearLayoutCompat
 import co.daily.CallClient
 import co.daily.CallClientCoroutineWrapper
-import co.daily.exception.RequestFailedException
+import co.daily.exception.OperationFailedException
 import co.daily.model.RequestListener
 import co.daily.model.RequestListenerWithData
 import co.daily.model.RequestResult
@@ -330,7 +330,7 @@ object DeveloperOptionsDialog {
 
         val text = try {
             "Success: " + result.getResultOrThrow().toString()
-        } catch (e: RequestFailedException) {
+        } catch (e: OperationFailedException) {
             "Error: " + e.message
         }
 
