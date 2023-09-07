@@ -34,7 +34,6 @@ import co.daily.settings.CameraPublishingSettingsUpdate
 import co.daily.settings.ClientSettingsUpdate
 import co.daily.settings.FacingModeUpdate
 import co.daily.settings.FrameRate
-import co.daily.settings.FromDefaults
 import co.daily.settings.InputSettings
 import co.daily.settings.InputSettingsUpdate
 import co.daily.settings.PublishingSettings
@@ -486,11 +485,9 @@ class DemoCallService : Service(), ChatProtocol.ChatProtocolListener {
                     forParticipantsWithProfiles = mapOf(
                         profileActiveCamera to SubscriptionSettingsUpdate(
                             profile = SubscriptionProfile.base,
-                            media = FromDefaults(),
                         ),
                         profileActiveScreenShare to SubscriptionSettingsUpdate(
                             profile = SubscriptionProfile.base,
-                            media = FromDefaults(),
                         )
                     )
                 )
