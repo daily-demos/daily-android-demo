@@ -26,6 +26,7 @@
     <string name="me">Me</string>
     <string name="username_with_camera">%s (camera)</string>
     <string name="username_with_screen_share">%s (screen)</string>
+    <string name="username_with_custom_track">%s (custom: %s)</string>
     <string name="remote_video_hide">Hide</string>
     <string name="remote_video_active_speaker">Active Speaker</string>
 

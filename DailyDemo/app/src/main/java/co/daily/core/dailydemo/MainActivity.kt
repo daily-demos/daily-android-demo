@@ -400,6 +400,17 @@ class MainActivity : AppCompatActivity(), DemoStateListener {
                     )
                 )
             }
+
+            it.value.media?.customVideo?.forEach { (name, media) ->
+                if (Utils.isMediaAvailable(media)) {
+                    choices.add(
+                        RemoteVideoMenuChoice(
+                            resources.getString(R.string.username_with_custom_track, username, name.name),
+                            RemoteVideoChooserManual(it.key, VideoTrackType.CustomTrack(name))
+                        )
+                    )
+                }
+            }
         }
 
         choices.sortBy { it.name }

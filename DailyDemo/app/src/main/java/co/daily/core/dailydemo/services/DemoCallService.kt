@@ -44,6 +44,7 @@ import co.daily.settings.VideoEncodingsSettingsUpdate
 import co.daily.settings.VideoMaxQualityUpdate
 import co.daily.settings.VideoMediaTrackSettingsUpdate
 import co.daily.settings.VideoSendSettingsUpdate
+import co.daily.settings.subscription.MediaSubscriptionSettingsUpdate
 import co.daily.settings.subscription.Subscribed
 import co.daily.settings.subscription.SubscriptionProfile
 import co.daily.settings.subscription.SubscriptionProfileSettings
@@ -395,7 +396,9 @@ class DemoCallService : Service(), ChatProtocol.ChatProtocolListener {
         listeners.forEach { it.onStateChanged(newState) }
     }
 
-    private fun setupParticipantSubscriptionProfiles(callClient: CallClient) {
+    private fun setupParticipantSubscriptionProfiles(
+        callClient: CallClient
+    ) {
         callClient.updateSubscriptionProfiles(
             mapOf(
                 profileActiveCamera to
@@ -440,9 +443,9 @@ class DemoCallService : Service(), ChatProtocol.ChatProtocolListener {
     }
 
     private fun updateRemoteVideoChoice() {
-        callClient?.apply {
+        callClient?.let { callClient ->
             val displayedRemoteParticipant = state.displayedRemoteParticipant?.participant?.id
-            val activeSpeaker = activeSpeaker()?.takeUnless { it.info.isLocal }?.id
+            val activeSpeaker = callClient.activeSpeaker()?.takeUnless { it.info.isLocal }?.id
 
             val choice = state.remoteVideoChooser.chooseRemoteVideo(
                 state.allParticipants,
@@ -454,7 +457,7 @@ class DemoCallService : Service(), ChatProtocol.ChatProtocolListener {
 
                 updateServiceState { it.with(newDisplayedRemoteParticipant = choice) }
 
-                updateSubscriptions(
+                callClient.updateSubscriptions(
                     // Subscribe to the currently displayed participant
                     forParticipants = choice.participant?.run {
                         mapOf(
@@ -462,18 +465,29 @@ class DemoCallService : Service(), ChatProtocol.ChatProtocolListener {
                                 profile = when (choice.trackType) {
                                     VideoTrackType.Camera -> profileActiveCamera
                                     VideoTrackType.ScreenShare -> profileActiveScreenShare
+                                    is VideoTrackType.CustomTrack -> SubscriptionProfile.base
                                     null -> SubscriptionProfile.base
-                                }
+                                },
+                                media = when (choice.trackType) {
+                                    is VideoTrackType.CustomTrack -> MediaSubscriptionSettingsUpdate(
+                                        customVideo = mapOf(
+                                            choice.trackType.name to VideoSubscriptionSettingsUpdate(
+                                                subscriptionState = Subscribed()
+                                            )
+                                        )
+                                    )
+                                    else -> null
+                                },
                             )
                         )
                     } ?: mapOf(),
                     // Unsubscribe from remote participants not currently displayed
                     forParticipantsWithProfiles = mapOf(
                         profileActiveCamera to SubscriptionSettingsUpdate(
-                            profile = SubscriptionProfile.base
+                            profile = SubscriptionProfile.base,
                         ),
                         profileActiveScreenShare to SubscriptionSettingsUpdate(
-                            profile = SubscriptionProfile.base
+                            profile = SubscriptionProfile.base,
                         )
                     )
                 )

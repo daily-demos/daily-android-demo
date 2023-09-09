@@ -22,6 +22,7 @@ data class RemoteVideoChooserManual(
             when (trackType) {
                 VideoTrackType.Camera -> camera
                 VideoTrackType.ScreenShare -> screenVideo
+                is VideoTrackType.CustomTrack -> customVideo.get(trackType.name)
             }
         }
 
@@ -35,12 +36,7 @@ data class RemoteVideoChooserManual(
             )
         }
 
-        val track = participant.media?.run {
-            when (trackType) {
-                VideoTrackType.Camera -> camera.track
-                VideoTrackType.ScreenShare -> screenVideo.track
-            }
-        }
+        val track = videoInfo?.track
 
         return RemoteVideoChooser.Choice(participant, track, trackType)
     }
