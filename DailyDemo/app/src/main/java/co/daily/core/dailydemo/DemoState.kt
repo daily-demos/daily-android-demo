@@ -25,7 +25,8 @@ data class DemoState(
 ) {
     data class StreamsState(
         val cameraEnabled: Boolean,
-        val micEnabled: Boolean
+        val micEnabled: Boolean,
+        val screenVideoEnabled: Boolean
     )
 
     fun with(
@@ -37,7 +38,7 @@ data class DemoState(
         newRemoteVideoChooser: RemoteVideoChooser = remoteVideoChooser,
         newAllParticipants: Map<ParticipantId, Participant> = allParticipants,
         newAvailableDevices: AvailableDevices = availableDevices,
-        newActiveAudioDevice: String? = activeAudioDevice
+        newActiveAudioDevice: String? = activeAudioDevice,
     ) = DemoState(
         newStatus,
         newInputs,
@@ -53,8 +54,8 @@ data class DemoState(
     companion object {
         fun default(): DemoState = DemoState(
             status = CallState.initialized,
-            inputs = StreamsState(cameraEnabled = true, micEnabled = true),
-            publishing = StreamsState(cameraEnabled = true, micEnabled = true),
+            inputs = StreamsState(cameraEnabled = true, micEnabled = true, screenVideoEnabled = false),
+            publishing = StreamsState(cameraEnabled = true, micEnabled = true, screenVideoEnabled = true),
             localParticipantTrack = null,
             displayedRemoteParticipant = null,
             remoteVideoChooser = RemoteVideoChooserAuto,

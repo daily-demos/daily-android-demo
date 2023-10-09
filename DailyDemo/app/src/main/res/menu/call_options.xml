@@ -13,4 +13,12 @@
         android:id="@+id/call_option_chat"
         android:title="@string/call_option_chat" />
 
+    <item
+        android:id="@+id/call_option_start_screen_share"
+        android:title="@string/call_option_start_screen_share" />
+
+    <item
+        android:id="@+id/call_option_stop_screen_share"
+        android:title="@string/call_option_stop_screen_share" />
+
 </menu>
