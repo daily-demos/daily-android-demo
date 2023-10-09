@@ -2,6 +2,7 @@ package co.daily.core.dailydemo
 
 import android.animation.Animator
 import android.animation.AnimatorListenerAdapter
+import android.app.Activity
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
@@ -9,6 +10,7 @@ import android.content.ServiceConnection
 import android.content.pm.PackageManager
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
+import android.media.projection.MediaProjectionManager
 import android.os.Bundle
 import android.os.IBinder
 import android.text.Editable
@@ -29,6 +31,7 @@ import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
 import android.widget.ToggleButton
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.result.contract.ActivityResultContracts.RequestMultiplePermissions
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.LinearLayoutCompat
@@ -51,6 +54,24 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 private const val TAG = "daily_demo_app"
 
 class MainActivity : AppCompatActivity(), DemoStateListener {
+
+    companion object {
+        private const val REQUEST_CAPTURE = 1
+    }
+
+    private lateinit var mediaProjectionManager: MediaProjectionManager
+    private val requestMediaProjection =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            if (result.resultCode == Activity.RESULT_OK) {
+                // Handle the permission granted and media projection here
+                val data: Intent? = result.data
+                if (data != null) {
+                    callService?.startScreenShare(data)
+                }
+            } else {
+                Log.e(TAG, "Denied permission to start media projection.")
+            }
+        }
 
     private val requestPermissionLauncher =
         registerForActivityResult(RequestMultiplePermissions()) { result ->
@@ -318,12 +339,25 @@ class MainActivity : AppCompatActivity(), DemoStateListener {
         moreOptionsButton.setOnClickListener {
             val menu = PopupMenu(this, moreOptionsButton)
             menu.inflate(R.menu.call_options)
+
+            val screenShareEnabled = demoState?.inputs?.screenVideoEnabled ?: false
+            menu.menu.findItem(R.id.call_option_stop_screen_share)?.isVisible = screenShareEnabled
+            menu.menu.findItem(R.id.call_option_start_screen_share)?.isVisible = !screenShareEnabled
+
             menu.show()
 
             menu.setOnMenuItemClickListener {
                 when (it.itemId) {
                     R.id.call_option_change_remote_participant -> {
                         showMenuChangeRemoteVideo()
+                    }
+
+                    R.id.call_option_start_screen_share -> {
+                        startScreenShare()
+                    }
+
+                    R.id.call_option_stop_screen_share -> {
+                        callService?.stopScreenShare()
                     }
 
                     R.id.call_option_developer_options -> {
@@ -349,6 +383,9 @@ class MainActivity : AppCompatActivity(), DemoStateListener {
         }
 
         audioDevicesSpinner = findViewById(R.id.audio_devices_spinner)
+
+        // initializing the mediaProjectionManager that we are going to use later to ask for screen share
+        mediaProjectionManager = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
 
         checkPermissions()
     }
@@ -496,8 +533,8 @@ class MainActivity : AppCompatActivity(), DemoStateListener {
                 it.isEmpty()
             }?.run { MeetingToken(this) }
 
+            callService!!.setUsername(username ?: "Android Demo User")
             callService!!.join(url, token)
-            callService!!.setUsername(username ?: "Android User")
         }
 
         fun setButtonListenerWithDisable(button: View, action: (RequestListener) -> Unit) {
@@ -535,6 +572,11 @@ class MainActivity : AppCompatActivity(), DemoStateListener {
         setButtonListenerWithDisable(camPublishButton) {
             callService?.toggleCamPublishing(camPublishButton.isChecked, it)
         }
+    }
+
+    private fun startScreenShare() {
+        val mediaProjectionIntent = mediaProjectionManager.createScreenCaptureIntent()
+        requestMediaProjection.launch(mediaProjectionIntent)
     }
 
     private fun populateSpinnerWithAvailableAudioDevices(audioDevices: List<MediaDeviceInfo>) {

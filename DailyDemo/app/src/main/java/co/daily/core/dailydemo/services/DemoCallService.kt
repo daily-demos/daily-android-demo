@@ -186,6 +186,14 @@ class DemoCallService : Service(), ChatProtocol.ChatProtocolListener {
         fun sendChatMessage(msg: String) {
             chatProtocol.sendMessage(msg)
         }
+
+        fun startScreenShare(mediaProjectionPermissionResultData: Intent) {
+            callClient?.startScreenShare(mediaProjectionPermissionResultData)
+        }
+
+        fun stopScreenShare() {
+            callClient?.stopScreenShare()
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -262,7 +270,8 @@ class DemoCallService : Service(), ChatProtocol.ChatProtocolListener {
                 it.with(
                     newInputs = DemoState.StreamsState(
                         cameraEnabled = inputSettings.camera.isEnabled,
-                        micEnabled = inputSettings.microphone.isEnabled
+                        micEnabled = inputSettings.microphone.isEnabled,
+                        screenVideoEnabled = inputSettings.screenVideo.isEnabled
                     )
                 )
             }
@@ -274,7 +283,10 @@ class DemoCallService : Service(), ChatProtocol.ChatProtocolListener {
                 it.with(
                     newPublishing = DemoState.StreamsState(
                         cameraEnabled = publishingSettings.camera.isPublishing,
-                        micEnabled = publishingSettings.microphone.isPublishing
+                        micEnabled = publishingSettings.microphone.isPublishing,
+                        // Note: due to current SDK limitations, the publish setting
+                        // for screenVideo has no effect.
+                        screenVideoEnabled = true
                     )
                 )
             }
