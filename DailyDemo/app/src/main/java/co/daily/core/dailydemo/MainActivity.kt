@@ -1,5 +1,6 @@
 package co.daily.core.dailydemo
 
+import android.Manifest
 import android.animation.Animator
 import android.animation.AnimatorListenerAdapter
 import android.app.Activity
@@ -612,8 +613,10 @@ class MainActivity : AppCompatActivity(), DemoStateListener {
     }
 
     private fun checkPermissions() {
-        val permissionList = applicationContext.packageManager
-            .getPackageInfo(applicationContext.packageName, PackageManager.GET_PERMISSIONS).requestedPermissions
+        val permissionList = listOf(
+            Manifest.permission.CAMERA,
+            Manifest.permission.RECORD_AUDIO,
+        )
 
         val notGrantedPermissions = permissionList.map {
             Pair(it, ContextCompat.checkSelfPermission(applicationContext, it))
