@@ -12,6 +12,7 @@ import android.content.pm.PackageManager
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
 import android.media.projection.MediaProjectionManager
+import android.os.Build
 import android.os.Bundle
 import android.os.IBinder
 import android.text.Editable
@@ -77,7 +78,7 @@ class MainActivity : AppCompatActivity(), DemoStateListener {
     private val requestPermissionLauncher =
         registerForActivityResult(RequestMultiplePermissions()) { result ->
             if (result.values.any { !it }) {
-                checkPermissions()
+                Toast.makeText(this, "Required permissions not granted", Toast.LENGTH_LONG).show()
             } else {
                 // permission is granted, we can initialize
                 initialize()
@@ -145,7 +146,7 @@ class MainActivity : AppCompatActivity(), DemoStateListener {
             .alpha(0.0f)
             .setDuration(500)
             .setListener(object : AnimatorListenerAdapter() {
-                override fun onAnimationEnd(animation: Animator?) {
+                override fun onAnimationEnd(animation: Animator) {
                     bottomToolbars.visibility = View.GONE
                 }
             })
@@ -613,10 +614,14 @@ class MainActivity : AppCompatActivity(), DemoStateListener {
     }
 
     private fun checkPermissions() {
-        val permissionList = listOf(
+        val permissionList = mutableListOf(
             Manifest.permission.CAMERA,
             Manifest.permission.RECORD_AUDIO,
         )
+
+        if (Build.VERSION.SDK_INT >= 33) {
+            permissionList.add(Manifest.permission.POST_NOTIFICATIONS)
+        }
 
         val notGrantedPermissions = permissionList.map {
             Pair(it, ContextCompat.checkSelfPermission(applicationContext, it))

@@ -21,7 +21,8 @@ data class DemoState(
     val remoteVideoChooser: RemoteVideoChooser,
     val allParticipants: Map<ParticipantId, Participant>,
     val availableDevices: AvailableDevices,
-    val activeAudioDevice: String?
+    val activeAudioDevice: String?,
+    val screenShareActive: Boolean,
 ) {
     data class StreamsState(
         val cameraEnabled: Boolean,
@@ -39,6 +40,7 @@ data class DemoState(
         newAllParticipants: Map<ParticipantId, Participant> = allParticipants,
         newAvailableDevices: AvailableDevices = availableDevices,
         newActiveAudioDevice: String? = activeAudioDevice,
+        newScreenShareActive: Boolean = screenShareActive,
     ) = DemoState(
         newStatus,
         newInputs,
@@ -48,7 +50,8 @@ data class DemoState(
         newRemoteVideoChooser,
         newAllParticipants,
         newAvailableDevices,
-        newActiveAudioDevice
+        newActiveAudioDevice,
+        newScreenShareActive
     )
 
     companion object {
@@ -66,7 +69,8 @@ data class DemoState(
                 speaker = emptyList(),
                 audio = emptyList()
             ),
-            activeAudioDevice = null
+            activeAudioDevice = null,
+            screenShareActive = false
         )
     }
 }
