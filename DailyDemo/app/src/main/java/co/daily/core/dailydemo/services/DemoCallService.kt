@@ -5,6 +5,7 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.util.Log
+import androidx.core.content.ContextCompat
 import co.daily.CallClient
 import co.daily.CallClientListener
 import co.daily.core.dailydemo.DemoState
@@ -122,6 +123,7 @@ class DemoCallService : Service(), ChatProtocol.ChatProtocolListener {
 
         fun leave(listener: RequestListener) {
             callClient?.leave(listener)
+            updateServiceState { it.with(newScreenShareActive = false) }
         }
 
         fun setUsername(username: String) {
@@ -190,11 +192,17 @@ class DemoCallService : Service(), ChatProtocol.ChatProtocolListener {
         }
 
         fun startScreenShare(mediaProjectionPermissionResultData: Intent) {
+            updateServiceState { it.with(newScreenShareActive = true) }
+            ContextCompat.startForegroundService(
+                this@DemoCallService,
+                Intent(this@DemoCallService, ScreenShareService::class.java)
+            )
             callClient?.startScreenShare(mediaProjectionPermissionResultData)
         }
 
         fun stopScreenShare() {
             callClient?.stopScreenShare()
+            updateServiceState { it.with(newScreenShareActive = false) }
         }
     }
 
@@ -286,8 +294,6 @@ class DemoCallService : Service(), ChatProtocol.ChatProtocolListener {
                     newPublishing = DemoState.StreamsState(
                         cameraEnabled = publishingSettings.camera.isPublishing,
                         micEnabled = publishingSettings.microphone.isPublishing,
-                        // Note: due to current SDK limitations, the publish setting
-                        // for screenVideo has no effect.
                         screenVideoEnabled = true
                     )
                 )

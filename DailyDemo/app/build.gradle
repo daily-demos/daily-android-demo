@@ -6,12 +6,11 @@ apply plugin: 'com.android.application'
 apply plugin: 'kotlin-android'
 
 android {
-    compileSdkVersion 31
-
     defaultConfig {
         applicationId "co.daily.core.dailydemo"
+        compileSdk 34
         minSdkVersion 23
-        targetSdkVersion 31
+        targetSdkVersion 34
         versionCode 1
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
     }
