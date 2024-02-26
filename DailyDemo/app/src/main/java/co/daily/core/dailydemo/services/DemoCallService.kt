@@ -42,6 +42,7 @@ import co.daily.settings.InputSettingsUpdate
 import co.daily.settings.PublishingSettings
 import co.daily.settings.PublishingSettingsUpdate
 import co.daily.settings.Scale
+import co.daily.settings.Torch
 import co.daily.settings.VideoEncodingSettingsUpdate
 import co.daily.settings.VideoEncodingsSettingsUpdate
 import co.daily.settings.VideoMaxQualityUpdate
@@ -142,6 +143,19 @@ class DemoCallService : Service(), ChatProtocol.ChatProtocolListener {
                     camera = CameraInputSettingsUpdate(
                         settings = VideoMediaTrackSettingsUpdate(
                             facingMode = cameraDirection
+                        )
+                    )
+                ),
+                listener
+            )
+        }
+
+        fun setTorch(enabled: Boolean, listener: RequestListener) {
+            callClient?.updateInputs(
+                InputSettingsUpdate(
+                    camera = CameraInputSettingsUpdate(
+                        settings = VideoMediaTrackSettingsUpdate(
+                            torch = Torch(enabled),
                         )
                     )
                 ),
