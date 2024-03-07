@@ -42,7 +42,6 @@ import co.daily.settings.InputSettingsUpdate
 import co.daily.settings.PublishingSettings
 import co.daily.settings.PublishingSettingsUpdate
 import co.daily.settings.Scale
-import co.daily.settings.Torch
 import co.daily.settings.VideoEncodingSettingsUpdate
 import co.daily.settings.VideoEncodingsSettingsUpdate
 import co.daily.settings.VideoMaxQualityUpdate
@@ -79,6 +78,8 @@ class DemoCallService : Service(), ChatProtocol.ChatProtocolListener {
     private var cameraDirection = FacingModeUpdate.user
 
     private var callClient: CallClient? = null
+
+    private var pendingScreenShareIntent: Intent? = null
 
     private val chatProtocol = ChatProtocol(
         this,
@@ -150,17 +151,12 @@ class DemoCallService : Service(), ChatProtocol.ChatProtocolListener {
             )
         }
 
-        fun setTorch(enabled: Boolean, listener: RequestListener) {
-            callClient?.updateInputs(
-                InputSettingsUpdate(
-                    camera = CameraInputSettingsUpdate(
-                        settings = VideoMediaTrackSettingsUpdate(
-                            torch = Torch(enabled),
-                        )
-                    )
-                ),
-                listener
-            )
+        fun setTorch(enabled: Boolean, listener: RequestListener? = null) {
+            callClient?.setCameraTorch(enabled, listener)
+        }
+
+        fun setZoom(ratio: Double, listener: RequestListener? = null) {
+            callClient?.setCameraZoom(ratio, listener)
         }
 
         fun toggleMicInput(enabled: Boolean, listener: RequestListener) {
@@ -206,12 +202,19 @@ class DemoCallService : Service(), ChatProtocol.ChatProtocolListener {
         }
 
         fun startScreenShare(mediaProjectionPermissionResultData: Intent) {
+            pendingScreenShareIntent = mediaProjectionPermissionResultData
             updateServiceState { it.with(newScreenShareActive = true) }
             ContextCompat.startForegroundService(
                 this@DemoCallService,
                 Intent(this@DemoCallService, ScreenShareService::class.java)
             )
-            callClient?.startScreenShare(mediaProjectionPermissionResultData)
+        }
+
+        fun screenShareForegroundServiceStarted() {
+            pendingScreenShareIntent?.apply {
+                callClient?.startScreenShare(this)
+                pendingScreenShareIntent = null
+            }
         }
 
         fun stopScreenShare() {
