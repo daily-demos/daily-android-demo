@@ -28,7 +28,9 @@ abstract class ForegroundService(
         override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
             Log.i(tag, "Connected to service")
             callService = service!! as DemoCallService.Binder
-            callService?.addListener(this@ForegroundService)
+            callService!!.addListener(this@ForegroundService)
+
+            callService!!.screenShareForegroundServiceStarted()
         }
 
         override fun onServiceDisconnected(name: ComponentName?) {
@@ -102,6 +104,7 @@ abstract class ForegroundService(
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         Log.i(tag, "onStartCommand()")
         startForeground(1, notification)
+        callService?.screenShareForegroundServiceStarted()
         return START_STICKY
     }
 
