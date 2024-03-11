@@ -19,7 +19,11 @@ object RemoteVideoChooserAuto : RemoteVideoChooser {
         val trackType: VideoTrackType?
 
         val participantWhoIsSharingScreen =
-            allParticipants.values.firstOrNull { Utils.isMediaAvailable(it.media?.screenVideo) }?.id
+            allParticipants.values.firstOrNull { !it.info.isLocal && Utils.isMediaAvailable(it.media?.screenVideo) }?.id
+
+        fun notLocal(id: ParticipantId?): ParticipantId? {
+            return id?.takeIf { allParticipants[it]?.info?.isLocal == false }
+        }
 
         /*
             The preference is:
@@ -29,8 +33,8 @@ object RemoteVideoChooserAuto : RemoteVideoChooser {
                 - Any remote participant who has their video opened
         */
         val participantId = participantWhoIsSharingScreen
-            ?: activeSpeaker
-            ?: displayedRemoteParticipant
+            ?: notLocal(activeSpeaker)
+            ?: notLocal(displayedRemoteParticipant)
             ?: allParticipants.values.firstOrNull {
                 !it.info.isLocal && Utils.isMediaAvailable(it.media?.camera)
             }?.id
