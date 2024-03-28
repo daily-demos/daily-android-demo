@@ -4,6 +4,7 @@ import android.app.Activity
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import android.util.Log
 import androidx.core.content.ContextCompat
 import co.daily.CallClient
@@ -35,6 +36,7 @@ import co.daily.settings.BitRate
 import co.daily.settings.CameraInputSettingsUpdate
 import co.daily.settings.CameraPublishingSettingsUpdate
 import co.daily.settings.ClientSettingsUpdate
+import co.daily.settings.Enable
 import co.daily.settings.FacingModeUpdate
 import co.daily.settings.FrameRate
 import co.daily.settings.InputSettings
@@ -186,10 +188,12 @@ class DemoCallService : Service(), ChatProtocol.ChatProtocolListener {
         }
 
         fun setAudioDevice(device: MediaDeviceInfo) {
-            Log.i(TAG, "Setting audio device to $device")
-            if (device.deviceId != state.activeAudioDevice) {
-                callClient?.setAudioDevice(device.deviceId)
-                updateServiceState { it.with(newActiveAudioDevice = device.deviceId) }
+            if (Build.VERSION.SDK_INT >= 23) {
+                Log.i(TAG, "Setting audio device to $device")
+                if (device.deviceId != state.activeAudioDevice) {
+                    callClient?.setAudioDevice(device.deviceId)
+                    updateServiceState { it.with(newActiveAudioDevice = device.deviceId) }
+                }
             }
         }
 
@@ -365,7 +369,11 @@ class DemoCallService : Service(), ChatProtocol.ChatProtocolListener {
             updateServiceState {
                 it.with(
                     newAvailableDevices = availableDevices,
-                    newActiveAudioDevice = callClient?.audioDevice()
+                    newActiveAudioDevice = if (Build.VERSION.SDK_INT >= 23) {
+                        callClient?.audioDevice()
+                    } else {
+                        null
+                    }
                 )
             }
         }
@@ -553,6 +561,7 @@ class DemoCallService : Service(), ChatProtocol.ChatProtocolListener {
             publishingSettings = PublishingSettingsUpdate(
                 camera = CameraPublishingSettingsUpdate(
                     sendSettings = VideoSendSettingsUpdate(
+                        allowAdaptiveLayers = Enable(),
                         encodings = VideoEncodingsSettingsUpdate(
                             settings = mapOf(
                                 VideoMaxQualityUpdate.low to
