@@ -238,7 +238,7 @@ class MainActivity : AppCompatActivity(), DemoStateListener {
                     view.videoScaleMode = VideoView.VideoScaleMode.FILL
                     if (!userToggledLocalPreview) localVideoToggle.isChecked = true
                 }
-                VideoTrackType.ScreenShare -> {
+                else -> {
                     view.videoScaleMode = VideoView.VideoScaleMode.FIT
                     if (!userToggledLocalPreview) localVideoToggle.isChecked = false
                 }
@@ -734,6 +734,7 @@ class MainActivity : AppCompatActivity(), DemoStateListener {
     }
 
     override fun onBackPressed() {
+        super.onBackPressed()
         finish()
     }
 }
