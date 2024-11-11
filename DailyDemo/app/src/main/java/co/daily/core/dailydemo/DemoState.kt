@@ -7,6 +7,7 @@ import co.daily.model.CallState
 import co.daily.model.MediaStreamTrack
 import co.daily.model.Participant
 import co.daily.model.ParticipantId
+import co.daily.settings.VideoProcessor
 
 // As an optimization for larger calls, it would be possible to modify this to
 // represent state updates rather than entire state snapshots. The MainActivity
@@ -23,6 +24,8 @@ data class DemoState(
     val availableDevices: AvailableDevices,
     val activeAudioDevice: String?,
     val screenShareActive: Boolean,
+    val videoProcessor: VideoProcessor?,
+    val customAudioTrackFreqHz: Int?
 ) {
     data class StreamsState(
         val cameraEnabled: Boolean,
@@ -41,6 +44,8 @@ data class DemoState(
         newAvailableDevices: AvailableDevices = availableDevices,
         newActiveAudioDevice: String? = activeAudioDevice,
         newScreenShareActive: Boolean = screenShareActive,
+        newVideoProcessor: VideoProcessor? = videoProcessor,
+        newCustomAudioTrackFreqHz: Int? = customAudioTrackFreqHz,
     ) = DemoState(
         newStatus,
         newInputs,
@@ -51,7 +56,9 @@ data class DemoState(
         newAllParticipants,
         newAvailableDevices,
         newActiveAudioDevice,
-        newScreenShareActive
+        newScreenShareActive,
+        newVideoProcessor,
+        newCustomAudioTrackFreqHz
     )
 
     companion object {
@@ -70,7 +77,9 @@ data class DemoState(
                 audio = emptyList()
             ),
             activeAudioDevice = null,
-            screenShareActive = false
+            screenShareActive = false,
+            videoProcessor = null,
+            customAudioTrackFreqHz = null
         )
     }
 }

@@ -21,10 +21,13 @@
     <string name="service_notification_message">Tap to return to the call.</string>
 
     <string name="more_options">More Options</string>
+    <string name="call_option_change_video_processor">Video processor…</string>
+    <string name="call_option_change_video_processor_title">Video processor</string>
     <string name="call_option_change_remote_video">Remote video…</string>
     <string name="call_option_change_remote_video_title">Remote video</string>
     <string name="call_option_start_screen_share">Start screen share</string>
     <string name="call_option_stop_screen_share">Stop screen share</string>
+    <string name="custom_audio_track">Custom audio track…</string>
     <string name="me">Me</string>
     <string name="username_with_camera">%s (camera)</string>
     <string name="username_with_screen_share">%s (screen)</string>

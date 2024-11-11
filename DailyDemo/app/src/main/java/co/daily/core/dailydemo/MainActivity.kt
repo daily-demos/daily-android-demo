@@ -50,6 +50,7 @@ import co.daily.model.CallState
 import co.daily.model.MediaDeviceInfo
 import co.daily.model.MeetingToken
 import co.daily.model.RequestListener
+import co.daily.settings.VideoProcessor
 import co.daily.view.VideoView
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 
@@ -350,6 +351,10 @@ class MainActivity : AppCompatActivity(), DemoStateListener {
 
             menu.setOnMenuItemClickListener {
                 when (it.itemId) {
+                    R.id.call_option_change_video_processor -> {
+                        showMenuChangeVideoProcessor()
+                    }
+
                     R.id.call_option_change_remote_participant -> {
                         showMenuChangeRemoteVideo()
                     }
@@ -368,6 +373,10 @@ class MainActivity : AppCompatActivity(), DemoStateListener {
 
                     R.id.call_option_chat -> {
                         startActivity(Intent(this@MainActivity, ChatActivity::class.java))
+                    }
+
+                    R.id.custom_audio_track -> {
+                        showMenuCustomAudioTrack()
                     }
 
                     else -> {
@@ -406,6 +415,36 @@ class MainActivity : AppCompatActivity(), DemoStateListener {
         }
 
         initEventListeners()
+    }
+
+    private fun showMenuChangeVideoProcessor() {
+
+        data class VideoProcessorMenuChoice(val name: String, val choice: VideoProcessor)
+
+        val choices = listOf(
+            VideoProcessorMenuChoice(name = "Off", choice = VideoProcessor.None),
+            VideoProcessorMenuChoice(name = "Blur (low)", choice = VideoProcessor.BackgroundBlur(0.6)),
+            VideoProcessorMenuChoice(name = "Blur (high)", choice = VideoProcessor.BackgroundBlur(1.0)),
+            VideoProcessorMenuChoice(name = "Image: Library", choice = VideoProcessor.BackgroundImage("vb-library.jpg"))
+        )
+
+        val checkedItem = choices.indexOfFirst { it.choice == demoState?.videoProcessor }
+            .coerceAtLeast(0)
+
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.call_option_change_video_processor_title)
+            .setSingleChoiceItems(
+                choices.map { it.name }.toTypedArray(),
+                checkedItem
+            ) { _, which ->
+                val item = choices[which]
+                Log.i(TAG, "Selected video processor: ${item.name}")
+                callService?.setVideoProcessor(item.choice)
+            }
+            .setNegativeButton("Close") { dialog, _ ->
+                dialog.dismiss()
+            }
+            .show()
     }
 
     private fun showMenuChangeRemoteVideo() {
@@ -482,6 +521,30 @@ class MainActivity : AppCompatActivity(), DemoStateListener {
                 val item = choices[which]
                 Log.i(TAG, "Selected remote track: ${item.name}")
                 callService?.setRemoteVideoChooser(item.choice)
+            }
+            .setNegativeButton("Close") { dialog, _ ->
+                dialog.dismiss()
+            }
+            .show()
+    }
+
+    private fun showMenuCustomAudioTrack() {
+
+        // To demonstrate custom audio tracks, we generate a sine wave.
+        val choices = listOf(null, 250, 500, 1000, 2000)
+
+        val checkedItem = choices.indexOfFirst { it == demoState?.customAudioTrackFreqHz }
+            .coerceAtLeast(0)
+
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.custom_audio_track)
+            .setSingleChoiceItems(
+                choices.map { it?.let { "$it Hz sine" } ?: "None" }.toTypedArray(),
+                checkedItem
+            ) { _, which ->
+                val item = choices[which]
+                Log.i(TAG, "Selected custom audio track: $item")
+                callService?.setCustomAudioTrack(item)
             }
             .setNegativeButton("Close") { dialog, _ ->
                 dialog.dismiss()
