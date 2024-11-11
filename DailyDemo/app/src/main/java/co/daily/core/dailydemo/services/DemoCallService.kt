@@ -14,6 +14,7 @@ import co.daily.core.dailydemo.DemoStateListener
 import co.daily.core.dailydemo.DeveloperOptionsDialog
 import co.daily.core.dailydemo.VideoTrackType
 import co.daily.core.dailydemo.chat.ChatProtocol
+import co.daily.core.dailydemo.customtracks.DemoSineWaveAudioSource
 import co.daily.core.dailydemo.remotevideochooser.RemoteVideoChooser
 import co.daily.core.dailydemo.remotevideochooser.RemoteVideoChooserAuto
 import co.daily.model.AvailableDevices
@@ -27,6 +28,8 @@ import co.daily.model.ParticipantId
 import co.daily.model.ParticipantLeftReason
 import co.daily.model.Recipient
 import co.daily.model.RequestListener
+import co.daily.model.RequestResult
+import co.daily.model.customtrack.CustomTrackName
 import co.daily.model.livestream.LiveStreamStatus
 import co.daily.model.recording.RecordingStatus
 import co.daily.model.streaming.StreamId
@@ -36,6 +39,7 @@ import co.daily.settings.BitRate
 import co.daily.settings.CameraInputSettingsUpdate
 import co.daily.settings.CameraPublishingSettingsUpdate
 import co.daily.settings.ClientSettingsUpdate
+import co.daily.settings.CustomAudioTrackPublishingSettingsUpdate
 import co.daily.settings.Enable
 import co.daily.settings.FacingModeUpdate
 import co.daily.settings.FrameRate
@@ -48,7 +52,9 @@ import co.daily.settings.VideoEncodingSettingsUpdate
 import co.daily.settings.VideoEncodingsSettingsUpdate
 import co.daily.settings.VideoMaxQualityUpdate
 import co.daily.settings.VideoMediaTrackSettingsUpdate
+import co.daily.settings.VideoProcessor
 import co.daily.settings.VideoSendSettingsUpdate
+import co.daily.settings.subscription.AudioSubscriptionSettingsUpdate
 import co.daily.settings.subscription.MediaSubscriptionSettingsUpdate
 import co.daily.settings.subscription.Subscribed
 import co.daily.settings.subscription.SubscriptionProfile
@@ -67,6 +73,8 @@ import java.util.concurrent.CopyOnWriteArrayList
 private const val TAG = "CallService"
 
 private const val ACTION_LEAVE = "action_leave"
+
+private val CUSTOM_AUDIO_TRACK = CustomTrackName("demoCustomAudioTrack")
 
 class DemoCallService : Service(), ChatProtocol.ChatProtocolListener {
 
@@ -187,6 +195,18 @@ class DemoCallService : Service(), ChatProtocol.ChatProtocolListener {
             updateRemoteVideoChoice()
         }
 
+        fun setVideoProcessor(videoProcessor: VideoProcessor) {
+            callClient?.updateInputs(
+                InputSettingsUpdate(
+                    camera = CameraInputSettingsUpdate(
+                        settings = VideoMediaTrackSettingsUpdate(
+                            processor = videoProcessor
+                        )
+                    )
+                )
+            )
+        }
+
         fun setAudioDevice(device: MediaDeviceInfo) {
             if (Build.VERSION.SDK_INT >= 23) {
                 Log.i(TAG, "Setting audio device to $device")
@@ -225,6 +245,46 @@ class DemoCallService : Service(), ChatProtocol.ChatProtocolListener {
             callClient?.stopScreenShare()
             updateServiceState { it.with(newScreenShareActive = false) }
         }
+
+        fun setCustomAudioTrack(freqHz: Int?) {
+
+            val call = callClient ?: return
+
+            if (freqHz == null) {
+                if (state.customAudioTrackFreqHz != null) {
+                    call.removeCustomAudioTrack(CUSTOM_AUDIO_TRACK, ::notifyIfError)
+                }
+            } else {
+
+                val source = DemoSineWaveAudioSource(sineFreqHz = freqHz)
+
+                if (state.customAudioTrackFreqHz != null) {
+                    call.updateCustomAudioTrack(CUSTOM_AUDIO_TRACK, source, ::notifyIfError)
+                } else {
+                    call.addCustomAudioTrack(CUSTOM_AUDIO_TRACK, source, ::notifyIfError)
+                }
+
+                call.updatePublishing(
+                    publishSettings = PublishingSettingsUpdate(
+                        customAudio = mapOf(
+                            CUSTOM_AUDIO_TRACK to CustomAudioTrackPublishingSettingsUpdate(
+                                isPublishing = Enable()
+                            )
+                        )
+                    )
+                )
+            }
+
+            updateServiceState { it.with(newCustomAudioTrackFreqHz = freqHz) }
+        }
+    }
+
+    private fun notifyIfError(result: RequestResult) {
+        result.error?.msg?.let(::notifyError)
+    }
+
+    private fun notifyError(msg: String) {
+        listeners.forEach { it.onError(msg) }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -302,8 +362,9 @@ class DemoCallService : Service(), ChatProtocol.ChatProtocolListener {
                     newInputs = DemoState.StreamsState(
                         cameraEnabled = inputSettings.camera.isEnabled,
                         micEnabled = inputSettings.microphone.isEnabled,
-                        screenVideoEnabled = inputSettings.screenVideo.isEnabled
-                    )
+                        screenVideoEnabled = inputSettings.screenVideo.isEnabled,
+                    ),
+                    newVideoProcessor = inputSettings.camera.settings.processor
                 )
             }
         }
@@ -460,6 +521,8 @@ class DemoCallService : Service(), ChatProtocol.ChatProtocolListener {
     private fun setupParticipantSubscriptionProfiles(
         callClient: CallClient
     ) {
+        val customAudio = mapOf(CUSTOM_AUDIO_TRACK to AudioSubscriptionSettingsUpdate(subscriptionState = Subscribed()))
+
         callClient.updateSubscriptionProfiles(
             mapOf(
                 profileActiveCamera to
@@ -472,7 +535,8 @@ class DemoCallService : Service(), ChatProtocol.ChatProtocolListener {
                         ),
                         screenVideo = VideoSubscriptionSettingsUpdate(
                             subscriptionState = Unsubscribed()
-                        )
+                        ),
+                        customAudio = customAudio
                     ),
                 profileActiveScreenShare to
                     SubscriptionProfileSettingsUpdate(
@@ -484,7 +548,8 @@ class DemoCallService : Service(), ChatProtocol.ChatProtocolListener {
                             receiveSettings = VideoReceiveSettingsUpdate(
                                 maxQuality = VideoMaxQualityUpdate.high
                             )
-                        )
+                        ),
+                        customAudio = customAudio
                     ),
                 SubscriptionProfile.base to
                     SubscriptionProfileSettingsUpdate(
@@ -493,7 +558,8 @@ class DemoCallService : Service(), ChatProtocol.ChatProtocolListener {
                         ),
                         screenVideo = VideoSubscriptionSettingsUpdate(
                             subscriptionState = Unsubscribed()
-                        )
+                        ),
+                        customAudio = customAudio
                     )
             )
         )
