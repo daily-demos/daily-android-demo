@@ -21,6 +21,7 @@ import co.daily.model.AvailableDevices
 import co.daily.model.CallState
 import co.daily.model.MediaDeviceInfo
 import co.daily.model.MeetingToken
+import co.daily.model.NetworkConnectionStatusUpdate
 import co.daily.model.NetworkStats
 import co.daily.model.Participant
 import co.daily.model.ParticipantCounts
@@ -497,6 +498,10 @@ class DemoCallService : Service(), ChatProtocol.ChatProtocolListener {
 
         override fun onTranscriptionError(message: String) {
             Log.i(TAG, "onTranscriptionError($message)")
+        }
+
+        override fun onNetworkConnectionStatusUpdated(status: NetworkConnectionStatusUpdate) {
+            Log.i(TAG, "onNetworkConnectionStatusUpdated($status)")
         }
     }
 
