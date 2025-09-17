@@ -20,7 +20,7 @@ jobs:
 
             -   name: Get Gradle wrapper
                 working-directory: DailyDemo
-                run: gradle wrapper --gradle-version 8.4
+                run: gradle wrapper --gradle-version 8.7
 
             -   name: Release build
                 working-directory: DailyDemo
