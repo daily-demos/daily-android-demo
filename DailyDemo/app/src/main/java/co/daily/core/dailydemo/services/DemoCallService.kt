@@ -40,6 +40,7 @@ import co.daily.settings.BitRate
 import co.daily.settings.CameraInputSettingsUpdate
 import co.daily.settings.CameraPublishingSettingsUpdate
 import co.daily.settings.ClientSettingsUpdate
+import co.daily.settings.CodecNameUpdate
 import co.daily.settings.CustomAudioTrackPublishingSettingsUpdate
 import co.daily.settings.Enable
 import co.daily.settings.FacingModeUpdate
@@ -117,13 +118,13 @@ class DemoCallService : Service(), ChatProtocol.ChatProtocolListener {
             listeners.remove(listener)
         }
 
-        fun join(url: String, token: MeetingToken?) {
+        fun join(url: String, token: MeetingToken?, preferredCodec: CodecNameUpdate) {
             updateServiceState {
                 it.with(
                     newRemoteVideoChooser = RemoteVideoChooserAuto
                 )
             }
-            callClient?.join(url, token, createClientSettings()) {
+            callClient?.join(url, token, createClientSettings(preferredCodec)) {
                 it.error?.apply {
                     Log.e(TAG, "Got error while joining call: $msg")
                     listeners.forEach { it.onError("Failed to join call: $msg") }
@@ -627,11 +628,12 @@ class DemoCallService : Service(), ChatProtocol.ChatProtocolListener {
         }
     }
 
-    private fun createClientSettings(): ClientSettingsUpdate {
+    private fun createClientSettings(preferredCodec: CodecNameUpdate): ClientSettingsUpdate {
         return ClientSettingsUpdate(
             publishingSettings = PublishingSettingsUpdate(
                 camera = CameraPublishingSettingsUpdate(
                     sendSettings = VideoSendSettingsUpdate(
+                        preferredCodec = preferredCodec,
                         allowAdaptiveLayers = Enable(),
                         encodings = VideoEncodingsSettingsUpdate(
                             settings = mapOf(

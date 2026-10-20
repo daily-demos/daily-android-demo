@@ -10,6 +10,10 @@
         android:title="@string/call_option_change_remote_video" />
 
     <item
+        android:id="@+id/call_option_preferred_codec"
+        android:title="@string/call_option_preferred_codec" />
+
+    <item
         android:id="@+id/call_option_developer_options"
         android:title="@string/call_option_developer_options" />
 

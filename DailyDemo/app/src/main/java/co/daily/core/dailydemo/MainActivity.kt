@@ -50,6 +50,7 @@ import co.daily.model.CallState
 import co.daily.model.MediaDeviceInfo
 import co.daily.model.MeetingToken
 import co.daily.model.RequestListener
+import co.daily.settings.CodecNameUpdate
 import co.daily.settings.VideoProcessor
 import co.daily.view.VideoView
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -92,6 +93,7 @@ class MainActivity : AppCompatActivity(), DemoStateListener {
             Log.i(TAG, "Connected to service")
             callService = service!! as DemoCallService.Binder
             callService?.addListener(this@MainActivity)
+            joinFromLaunchExtrasIfRequested()
         }
 
         override fun onServiceDisconnected(name: ComponentName?) {
@@ -343,6 +345,13 @@ class MainActivity : AppCompatActivity(), DemoStateListener {
             val menu = PopupMenu(this, moreOptionsButton)
             menu.inflate(R.menu.call_options)
 
+            menu.menu.findItem(R.id.call_option_preferred_codec)?.apply {
+                // The codec is chosen when the camera is first sent, so it can
+                // only be changed before joining or after leaving.
+                isVisible = demoState?.status.let { it == null || it == CallState.initialized || it == CallState.left }
+                title = getString(R.string.call_option_preferred_codec, preferredCodec().name.uppercase())
+            }
+
             val screenShareEnabled = demoState?.inputs?.screenVideoEnabled ?: false
             menu.menu.findItem(R.id.call_option_stop_screen_share)?.isVisible = screenShareEnabled
             menu.menu.findItem(R.id.call_option_start_screen_share)?.isVisible = !screenShareEnabled
@@ -369,6 +378,10 @@ class MainActivity : AppCompatActivity(), DemoStateListener {
 
                     R.id.call_option_developer_options -> {
                         callService?.showDeveloperOptionsDialog(this)
+                    }
+
+                    R.id.call_option_preferred_codec -> {
+                        showMenuPreferredCodec()
                     }
 
                     R.id.call_option_chat -> {
@@ -572,6 +585,38 @@ class MainActivity : AppCompatActivity(), DemoStateListener {
         }
     }
 
+    private fun preferredCodec(): CodecNameUpdate =
+        CodecNameUpdate.entries.firstOrNull { it.name == prefs.preferredCodec } ?: CodecNameUpdate.vp8
+
+    private fun showMenuPreferredCodec() {
+        val codecs = CodecNameUpdate.entries
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.call_option_preferred_codec_title)
+            .setSingleChoiceItems(
+                codecs.map { it.name.uppercase() }.toTypedArray(),
+                codecs.indexOf(preferredCodec())
+            ) { dialog, which ->
+                prefs.preferredCodec = codecs[which].name
+                dialog.dismiss()
+            }
+            .show()
+    }
+
+    // Testing aid: `adb shell am start -n co.daily.core.dailydemo/.MainActivity
+    // --es roomURL <url> --es preferredCodec VP9 --ez autoJoin true` picks the
+    // codec and joins with the camera, without any taps.
+    private fun joinFromLaunchExtrasIfRequested() {
+        if (!intent.getBooleanExtra("autoJoin", false)) {
+            return
+        }
+        intent.removeExtra("autoJoin")
+        intent.getStringExtra("preferredCodec")?.lowercase()?.let { name ->
+            CodecNameUpdate.entries.firstOrNull { it.name == name }?.let { prefs.preferredCodec = it.name }
+        }
+        intent.getStringExtra("roomURL")?.let { addurl.setText(it) }
+        joinButton.post { joinButton.performClick() }
+    }
+
     private fun initEventListeners() {
         addurl.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
@@ -599,7 +644,7 @@ class MainActivity : AppCompatActivity(), DemoStateListener {
             }?.run { MeetingToken(this) }
 
             callService!!.setUsername(username ?: "Android Demo User")
-            callService!!.join(url, token)
+            callService!!.join(url, token, preferredCodec())
         }
 
         fun setButtonListenerWithDisable(button: View, action: (RequestListener) -> Unit) {
