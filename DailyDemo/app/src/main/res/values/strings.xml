@@ -36,6 +36,8 @@
     <string name="remote_video_active_speaker">Active Speaker</string>
 
     <string name="call_option_developer_options">Developer options…</string>
+    <string name="call_option_preferred_codec">Preferred codec (%1$s)…</string>
+    <string name="call_option_preferred_codec_title">Preferred codec</string>
     <string name="call_option_developer_options_title">Developer options</string>
 
     <string name="close_dialog">Close</string>
